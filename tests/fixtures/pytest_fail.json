@@ -2,6 +2,6 @@
   "summary": {"total": 2, "failed": 1, "errors": 1, "passed": 0},
   "tests": [
     {"nodeid": "tests/test_a.py::test_login", "outcome": "failed", "call": {"crash": {"type": "AssertionError", "message": "assert 200 == 401"}}},
-    {"nodeid": "tests/test_db.py::test_conn", "outcome": "error", "call": {"crash": {"type": "ImportError", "message": "No module named 'psycopg2'"}}}
+    {"nodeid": "tests/test_db.py::test_conn", "outcome": "error", "call": {"crash": {"type": "ModuleNotFoundError", "message": "No module named 'psycopg2'"}}}
   ]
 }

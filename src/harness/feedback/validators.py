@@ -20,7 +20,9 @@ class PytestValidator(Validator):
             if t.get("outcome") in ("failed", "error"):
                 crash = t.get("call", {}).get("crash", {})
                 ctype = crash.get("type", "")
-                kind = FailureKind.IMPORT_ERROR if "Import" in ctype else FailureKind.ASSERTION_ERROR
+                kind = (FailureKind.IMPORT_ERROR
+                        if ctype in ("ImportError", "ModuleNotFoundError") or "Import" in ctype
+                        else FailureKind.ASSERTION_ERROR)
                 failures.append(Failure(kind=kind, location=t["nodeid"], message=crash.get("message", "")))
         verdict = Verdict.PASS if not failures else Verdict.FAIL
         return Feedback(source=Source.TEST, verdict=verdict, failures=failures)

@@ -34,3 +34,9 @@ def test_mypy_validator_classifies_type():
     assert fb.source == Source.TYPE and fb.verdict == Verdict.FAIL
     f = fb.failures[0]
     assert f.kind == FailureKind.TYPE_VIOLATION and f.location == "src/app.py:8"
+
+def test_pytest_validator_classifies_module_not_found_as_import_error():
+    v = PytestValidator()
+    fb = v.parse(Product(exitcode=1, stdout=json.dumps(load("pytest_fail.json")), stderr=""))
+    kinds = {(f.kind, f.location) for f in fb.failures}
+    assert (FailureKind.IMPORT_ERROR, "tests/test_db.py::test_conn") in kinds
