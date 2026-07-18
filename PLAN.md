@@ -1255,7 +1255,6 @@ from harness.llm.mock import MockLLMClient
 from harness.llm.base import LLMResponse
 from harness.governance.guardrail import Guardrail, Decision
 from harness.governance.approver import AutoRejectApprover
-from harness.governance.guardrail import Guardrail
 from harness.config import GuardrailRules, ValidatorConfig
 from harness.feedback.feedback_loop import FeedbackLoop
 from harness.feedback.validators import PytestValidator, Product
