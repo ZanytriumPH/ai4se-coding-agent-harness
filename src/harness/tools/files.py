@@ -6,7 +6,7 @@ from .base import Tool, Product
 def _safe(workdir: str, path: str) -> Path:
     base = Path(workdir).resolve()
     target = (base / path).resolve()
-    if not str(target).startswith(str(base)):
+    if target != base and base not in target.parents:
         raise ValueError(f"path escape detected: {path}")
     return target
 
