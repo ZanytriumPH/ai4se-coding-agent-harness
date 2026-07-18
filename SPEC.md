@@ -214,7 +214,7 @@ class RunResult:        outcome: Literal["success","no_progress","max_rounds"]
 | **Anthropic**（可选） | 工具调用最稳，作 fallback；接口统一 |
 | **PyPI 分发 + OS keyring** | 与 Windows 环境、CLI/Web HITL、凭据安全天然契合，凭据做到"最好形态" |
 | **SSE（非 WS）** | 单向流式足够、实现简 |
-| **Open Design**（前端） | 通用要求 §3.4 推荐；满足 WebUI 要求 |
+| **Open Design**（前端） | 通用要求 §3.4 推荐；满足 WebUI 要求。**前端设计系统**：Open Design web skill + Material Design 基线（Material Components Web CSS 经 CDN 引入）；WebUI 为内核外薄层，不参与 mock 单测路径 |
 | **放弃 OS 沙箱，用 guardrail 规则围栏** | Windows 沙箱方案少且依赖外部能力；规则围栏全自编码，符合 §A.4 红线 |
 
 ---

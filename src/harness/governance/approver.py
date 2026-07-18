@@ -24,9 +24,17 @@ class CliApprover:
 
 
 class WebApprover:
-    """Task 14 充实：通过 SSE/POST 与前端交互。此处留可注入的回调桩。"""
-    def __init__(self, ask=None):
-        self._ask = ask or (lambda _a: False)
+    """Task 14 充实：通过 WebUI session 与前端交互审批。
+
+    内核外薄层（§A.4）：不参与 mock 单测路径。注入 session 时走
+    ``session.ask(action)``（SSE + POST 回传）；否则回落到可注入的 ``ask``
+    回调桩（供单元测试用，保持 ``WebApprover(ask=...)`` 契约）。
+    """
+    def __init__(self, session=None, ask=None):
+        self._session = session
+        self._ask = ask
 
     def approve(self, action: Action) -> bool:
-        return self._ask(action)
+        if self._session is not None:
+            return self._session.ask(action)
+        return (self._ask or (lambda _a: False))(action)
