@@ -71,10 +71,19 @@ demo/
 
 ## Worktree 与 PR 划分（§4.6/§4.7）
 
-每个 worktree 对应一个 PR、一组职责内聚的 task；worktree 在**执行时**由 `superpowers:using-git-worktrees` 技能创建。基础层（PR-0）须先行 merge，其余 PR 据依赖图推进，**同一并行组内的 PR 可开多个 worktree 同时推进**。
+合并为 **5 个 PR**（每个 PR 一个 worktree + SDD + finish），平衡 §4.6/§4.7 忠诚度与编排成本。worktree 在**执行时**由 `superpowers:using-git-worktrees` 技能创建。
 
-| Worktree / PR | 含 Task | 标题 | 依赖 | 可与谁并行 |
-|---|---|---|---|---|
+| Worktree / PR | 含 Task | 标题 | 依赖 |
+|---|---|---|---|
+| **PR-1 · 基座** | T1, T2, T3, T3b | models + config + LLM 抽象/Mock + 真实 provider client | — |
+| **PR-2 · 机制层** | T4, T5, T6, T7, T8, T9, T11 | Guardrail + Approver + Memory + Validators + FeedbackLoop + Tools + Credentials | PR-1 |
+| **PR-3 · 集成** | T10, T12, T13 | AgentLoop + 手写 target repo + mock-LLM 端到端修复 | PR-2 |
+| **PR-4 · WebUI + 演示** | T14, T15 | SSE+审批 Open Design 前端 + 三幕机制演示 | PR-3 |
+| **PR-5 · 打包与 CI** | T16, T17 | pyproject + CLI + Makefile + .gitlab-ci.yml + README | PR-4 |
+
+节奏：PR-1 → PR-2 → PR-3 → PR-4 → PR-5 串行（后依赖前）。每个 PR 内部按 task 的红-绿-重构-提交纪律推进；PR 间以两阶段评审（spec 合规 → 代码质量）为闸门，Critical issue 必须修复才进下一 PR。
+
+---|---|---|---|---|
 | **PR-0 · 基座** | T1, T2, T3 | models + config + LLM 抽象/Mock | — | 无（先行 merge） |
 | **PR-1 · 治理** | T4, T5 | Guardrail + Approver 三实现 | PR-0 | PR-2/3/4/6 |
 | **PR-2 · 记忆** | T6 | Memory store/recall（自实现） | PR-0 | PR-1/3/4/6 |
@@ -439,6 +448,156 @@ Expected: PASS
 git add src/harness/llm/ tests/test_mock_llm.py
 git commit -m "feat(llm): LLMClient protocol + MockLLMClient scripted playback"
 ```
+
+---
+
+### Task 3b: 真实 LLM provider client `llm/deepseek.py` + `llm/anthropic_client.py`
+
+**Files:**
+- Create: `src/harness/llm/deepseek.py`, `src/harness/llm/anthropic_client.py`
+- Test: `tests/test_provider_clients.py`
+
+**Interfaces:**
+- Consumes: `LLMClient` 协议 + `LLMResponse`（Task 3）
+- Produces: `DeepSeekClient(api_key, http_client=None, model="deepseek-chat")`、`AnthropicClient(api_key, http_client=None, model="claude-sonnet-5")`，均实现 `complete(messages, tools_schema)->LLMResponse`。function-call 解析为 `LLMResponse(tool,args,...)`；解析失败 `parse_error=True`。`httpx.Client` 可注入（`MockTransport`）以离线单测。
+
+- [ ] **Step 1: Write the failing test（httpx MockTransport，无网络）**
+
+```python
+# tests/test_provider_clients.py
+import httpx
+from harness.llm.deepseek import DeepSeekClient
+from harness.llm.anthropic_client import AnthropicClient
+
+def _client(cls, payload, status=200):
+    transport = httpx.MockTransport(lambda req: httpx.Response(status, json=payload))
+    return cls(api_key="sk-test", http_client=httpx.Client(transport=transport))
+
+def test_deepseek_parses_tool_call():
+    payload = {"choices": [{"message": {"content": None, "tool_calls": [
+        {"id": "1", "type": "function",
+         "function": {"name": "write_file",
+                      "arguments": '{"path": "a.py", "content": "x"}'}}]}}]}
+    r = _client(DeepSeekClient, payload).complete([{"role": "user", "content": "fix"}], [])
+    assert r.tool == "write_file"
+    assert r.args == {"path": "a.py", "content": "x"}
+    assert r.parse_error is False
+
+def test_deepseek_parse_error_on_malformed_args():
+    payload = {"choices": [{"message": {"tool_calls": [
+        {"function": {"name": "write_file", "arguments": "NOT JSON"}}]}}]}
+    r = _client(DeepSeekClient, payload).complete([], [])
+    assert r.parse_error is True and r.tool is None
+
+def test_deepseek_text_only():
+    payload = {"choices": [{"message": {"content": "thinking..."}}]}
+    r = _client(DeepSeekClient, payload).complete([], [])
+    assert r.tool is None and r.text == "thinking..."
+
+def test_anthropic_parses_tool_use():
+    payload = {"content": [{"type": "tool_use", "id": "1", "name": "run_tests", "input": {}}]}
+    r = _client(AnthropicClient, payload).complete([{"role": "user", "content": "fix"}], [])
+    assert r.tool == "run_tests" and r.args == {}
+
+def test_anthropic_text_only():
+    payload = {"content": [{"type": "text", "text": "thinking..."}]}
+    r = _client(AnthropicClient, payload).complete([], [])
+    assert r.tool is None and r.text == "thinking..."
+
+def test_anthropic_parse_error_on_empty_content():
+    r = _client(AnthropicClient, {"content": []}).complete([], [])
+    assert r.parse_error is True
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `PYTHONPATH=src pytest tests/test_provider_clients.py -v`
+Expected: FAIL — `ModuleNotFoundError: harness.llm.deepseek`
+
+- [ ] **Step 3: Write minimal implementation**
+
+```python
+# src/harness/llm/deepseek.py
+from __future__ import annotations
+import json
+import httpx
+from .base import LLMResponse
+
+class DeepSeekClient:
+    def __init__(self, api_key: str, http_client: httpx.Client | None = None,
+                 model: str = "deepseek-chat"):
+        self.api_key = api_key
+        self.model = model
+        self.http = http_client or httpx.Client()
+
+    def complete(self, messages, tools_schema) -> LLMResponse:
+        resp = self.http.post(
+            "https://api.deepseek.com/chat/completions",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={"model": self.model, "messages": messages,
+                  "tools": tools_schema or None},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        msg = (resp.json().get("choices") or [{}])[0].get("message", {})
+        tcs = msg.get("tool_calls") or []
+        if not tcs:
+            return LLMResponse(tool=None, args=None, text=msg.get("content"), parse_error=False)
+        fn = tcs[0].get("function", {})
+        try:
+            args = json.loads(fn.get("arguments", "{}"))
+        except (json.JSONDecodeError, TypeError):
+            return LLMResponse(tool=None, args=None, text=None, parse_error=True)
+        return LLMResponse(tool=fn.get("name"), args=args, text=None, parse_error=False)
+```
+
+```python
+# src/harness/llm/anthropic_client.py
+from __future__ import annotations
+import httpx
+from .base import LLMResponse
+
+class AnthropicClient:
+    def __init__(self, api_key: str, http_client: httpx.Client | None = None,
+                 model: str = "claude-sonnet-5"):
+        self.api_key = api_key
+        self.model = model
+        self.http = http_client or httpx.Client()
+
+    def complete(self, messages, tools_schema) -> LLMResponse:
+        resp = self.http.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={"x-api-key": self.api_key, "anthropic-version": "2023-06-01"},
+            json={"model": self.model, "max_tokens": 1024,
+                  "messages": messages, "tools": tools_schema or None},
+            timeout=60,
+        )
+        resp.raise_for_status()
+        for block in resp.json().get("content", []):
+            if block.get("type") == "tool_use":
+                return LLMResponse(tool=block.get("name"), args=block.get("input", {}),
+                                   text=None, parse_error=False)
+            if block.get("type") == "text":
+                return LLMResponse(tool=None, args=None, text=block.get("text"),
+                                   parse_error=False)
+        return LLMResponse(tool=None, args=None, text=None, parse_error=True)
+```
+
+在 `src/harness/llm/__init__.py` 追加：`from .deepseek import DeepSeekClient` 与 `from .anthropic_client import AnthropicClient`。
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `PYTHONPATH=src pytest tests/test_provider_clients.py -v`
+Expected: PASS（6/6，全程无网络）
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/harness/llm/deepseek.py src/harness/llm/anthropic_client.py src/harness/llm/__init__.py tests/test_provider_clients.py
+git commit -m "feat(llm): DeepSeek + Anthropic provider clients over httpx (mock-transport tested)"
+```
+
+> 真实 LLM 冒烟（§9.4）在 Task 16 CLI 里用 `CredentialStore.get()` 取 key + 选 provider client 接入 `AgentLoop` 跑一次完整修复；`@pytest.mark.live` 标记、CI skip。
 
 ---
 
