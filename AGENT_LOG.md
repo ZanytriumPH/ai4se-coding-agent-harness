@@ -98,3 +98,13 @@
 - **过程缺口补修**：§4.7 PLAN.md 持续更新——回填 11 个已完成 task 的 checkbox + commit hash（commit `5c213eb`）。
 - **延期 Minor（PR-2）**：8 项（缺尾换行、Validator.parse 非抽象、ruff/mypy 下标 KeyError 风险、clear() 吞异常、verdict.name 字符串比较、FeedbackLoop.validators 未用、bare dict、Tool 非抽象）→ 全延后，PR-3 typing-polish 或 PR-5 finalize 一并清。
 - **凭据**：全程 clean，仅 fake 占位（`sk-test`/`sk-secret`），`.gitignore` 排除 `.env`/`*.key`/`secrets.yaml`，`status()` 不回显明文。
+
+---
+
+## 7. PR-3 收尾（集成）合并记录 — 内核完成
+
+- **合并方式**：`finishing-a-development-branch` → 合并入 main 本地（fast-forward，0d76d87..ea31f0e，4 commits）。沿用既定 5-PR 本地策略（PR-1/PR-2 同型，不再重复问）。main 上 `PYTHONPATH=src pytest tests/ -q` → 44/44（须 scope 到 tests/，见下）。
+- **内核完成里程碑**：PR-3 后 harness 内核完整——`AgentLoop`（自实现主循环，无 LangChain/AutoGen/CrewAI/openai/anthropic 寄生）把所有机制（LLMClient/Guardrail/Approver/ToolDispatcher/Validators/FeedbackLoop/Memory/Config）串成 `while` 循环。§A.4-A/B/C 三判据全部确认（终评 opus）：(A) 自实现循环+mockable LLM 抽象；(B) 机制皆代码（guardrail.inspect/approver.approve/dispatcher.exec/validator.parse/loop.update/failure_fingerprint，LLM 只产下一步 Action）；(C) 移除真实 LLM 仍 44/44 离线可测（MockLLM+stub dispatcher+AutoReject+Memory on tmp_path，无网络/keyring/subprocess）。
+- **§A.6 机制演示三幕覆盖**：① 护栏拦截危险动作 = Task 4 `test_guardrail.py`；② 反馈闭环驱动自我修正 = Task 10 `test_loop.py` + Task 13 `test_integration.py`（真实机制栈）；③ 重点维度确定性行为（NO_PROGRESS 停机）= Task 8 `test_feedback_loop.py`。三幕由测试套件集体覆盖；T15（PR-4）将把它们串成 `make demo` 单命令可重复演示。
+- **⚠️ testpaths 缺口（延后 PR-5 T16）**：从仓库根裸跑 `pytest` 会收集 `demo/target_repo/tests/*.py`（demo 的 seeded-failure 测试）→ 3 collection errors。修复 = 根 `pyproject.toml` 设 `testpaths=["tests"]`（PLAN Task 16 Step 1 已载明）；CI `unit-test` job 用 `pytest tests/ -q`。非 PR-3 引入，是 demo 仓库的伴生属性。
+- **延期 Minor 累计**：PR-2 的 8 项 + PR-3 的 7 项（last_feedback 类型松散、dead `if feedbacks else None`、DENY 冗余 stop=CONTINUE、test_loop/test_integration 未用 import、6 文件缺尾换行、demo 缺陷数 4/3/3 vs brief 近似 5/3/2 已预受）→ 全延后，PR-5 typing-polish/finalize 一并清。
