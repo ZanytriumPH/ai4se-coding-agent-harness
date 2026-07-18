@@ -1,0 +1,1 @@
+[{"file": "src/app.py", "line": 8, "type": "error", "message": "Argument 1 has incompatible type \"str\"; expected \"int\""}]
