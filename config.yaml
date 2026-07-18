@@ -1,0 +1,14 @@
+# config.yaml
+llm_provider: deepseek
+memory_path: .agent_memory/
+validator:
+  max_rounds: 10
+  no_progress_window: 3
+guardrail:
+  deny_paths: [.env, .gitlab-ci.yml]
+  deny_path_globs: [".github/**"]
+  network_whitelist: [pip install, npm install, mvn verify]
+  network_blacklist: [curl, wget, iptables]
+  git_block: [push]
+  shell_blacklist: ["rm -rf", sudo, "chmod 777", mkfs, DROP, TRUNCATE]
+  escape_regex: '(^/)|(\.\.)'
