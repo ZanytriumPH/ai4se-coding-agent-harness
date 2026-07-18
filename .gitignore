@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+
+# Test / cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Harness runtime artifacts
+.agent_memory/
+.agent_runs/
+
+# Credentials — never commit
+.env
+.env.*
+*.key
+secrets.yaml
+
+# OS
+.DS_Store
+Thumbs.db
