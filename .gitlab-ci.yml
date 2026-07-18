@@ -1,0 +1,25 @@
+# .gitlab-ci.yml
+stages: [test, build]
+
+unit-test:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - pip install -e .[dev]
+    - pip install ruff mypy pytest-json-report || true
+  script:
+    - pytest -q
+    - python demo/run_demo.py
+  rules:
+    - if: $CI_COMMIT_BRANCH
+
+build-wheel:
+  stage: build
+  image: python:3.11-slim
+  needs: [unit-test]
+  before_script:
+    - pip install build
+  script:
+    - python -m build
+  artifacts:
+    paths: [dist/*.whl]
