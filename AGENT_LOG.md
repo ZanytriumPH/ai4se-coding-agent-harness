@@ -108,3 +108,14 @@
 - **§A.6 机制演示三幕覆盖**：① 护栏拦截危险动作 = Task 4 `test_guardrail.py`；② 反馈闭环驱动自我修正 = Task 10 `test_loop.py` + Task 13 `test_integration.py`（真实机制栈）；③ 重点维度确定性行为（NO_PROGRESS 停机）= Task 8 `test_feedback_loop.py`。三幕由测试套件集体覆盖；T15（PR-4）将把它们串成 `make demo` 单命令可重复演示。
 - **⚠️ testpaths 缺口（延后 PR-5 T16）**：从仓库根裸跑 `pytest` 会收集 `demo/target_repo/tests/*.py`（demo 的 seeded-failure 测试）→ 3 collection errors。修复 = 根 `pyproject.toml` 设 `testpaths=["tests"]`（PLAN Task 16 Step 1 已载明）；CI `unit-test` job 用 `pytest tests/ -q`。非 PR-3 引入，是 demo 仓库的伴生属性。
 - **延期 Minor 累计**：PR-2 的 8 项 + PR-3 的 7 项（last_feedback 类型松散、dead `if feedbacks else None`、DENY 冗余 stop=CONTINUE、test_loop/test_integration 未用 import、6 文件缺尾换行、demo 缺陷数 4/3/3 vs brief 近似 5/3/2 已预受）→ 全延后，PR-5 typing-polish/finalize 一并清。
+
+---
+
+## 8. PR-4 收尾（WebUI+演示）合并记录
+
+- **合并方式**：合并入 main 本地（fast-forward，ea31f0e..50d88cc，3 commits）。main 上 `pytest tests/ -q` → 45/45，`python demo/run_demo.py` → ALL ACTS PASS。沿用既定 5-PR 本地策略。
+- **§A.6 机制演示项目级满足**：`demo/run_demo.py` 单脚本确定性复现三幕（① 护栏拒 `rm -rf /` ② 反馈闭环 fail→success ③ 无进展停机），全在 MockLLM 下离线运行。`make demo` 单命令接线留 T16。
+- **§A.4-C WebUI 隔离**：`src/harness/**` 不 import starlette/uvicorn/webui（grep 零命中）；`src/webui/__init__.py` 空（0 字节）使 `import webui` 不强拖 starlette；测试仅 import `harness.*`，45/45 离线（starlette 未装亦可跑）。WebUI 为纯加性的内核外薄层。
+- **§3.6 甲 落地**：SPEC §8 点名「Open Design web skill + Material Design 基线」；`index.html` 实引 `material-components-web@14.0.0` CDN（公开 unpkg，非私有资产）。
+- **§5.9 部署就绪**：`make_app(session)->Starlette` 代码级可部署（SSE/approval/static）；公开 URL 部署（Render/Fly.io）为终交付物，明确在 PR-4 范围外，留 PR-5/终交付。
+- **延期 Minor 累计**：PR-2(8)+PR-3(7)+PR-4(4)=19 项（server.py dead json import、多文件缺尾换行、make demo/pyproject testpaths 待 T16 接线）→ PR-5 finalize 一并清。
