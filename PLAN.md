@@ -244,7 +244,7 @@ guardrail:
   network_blacklist: [curl, wget, iptables]
   git_block: [push]
   shell_blacklist: ["rm -rf", sudo, "chmod 777", mkfs, DROP, TRUNCATE]
-  escape_regex: "\\.\\./|/"
+  escape_regex: '(^/)|(\.\.)'
 """
     p = tmp_path / "config.yaml"
     p.write_text(cfg_text, encoding="utf-8")
@@ -278,7 +278,7 @@ class GuardrailRules:
     network_blacklist: list[str] = field(default_factory=list)
     git_block: list[str] = field(default_factory=list)
     shell_blacklist: list[str] = field(default_factory=list)
-    escape_regex: str = r"\.\./|/"
+    escape_regex: str = r"(^/)|(\.\.)"  # 绝对路径(^/) 或 目录穿越(..) → NeedApproval; 不匹配普通子路径 src/app.py
 
 @dataclass
 class ValidatorConfig:
@@ -311,7 +311,7 @@ class Config:
                 network_blacklist=g.get("network_blacklist", []),
                 git_block=g.get("git_block", []),
                 shell_blacklist=g.get("shell_blacklist", []),
-                escape_regex=g.get("escape_regex", r"\.\./|/"),
+                escape_regex=g.get("escape_regex", r"(^/)|(\.\.)"),
             ),
         )
 ```
@@ -330,7 +330,7 @@ guardrail:
   network_blacklist: [curl, wget, iptables]
   git_block: [push]
   shell_blacklist: ["rm -rf", sudo, "chmod 777", mkfs, DROP, TRUNCATE]
-  escape_regex: "\\.\\./|/"
+  escape_regex: '(^/)|(\.\.)'
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
@@ -497,6 +497,10 @@ def test_curl_denied():
 def test_normal_write_allowed():
     g = Guardrail(rules())
     assert g.inspect(Action("write_file", {"path": "src/app.py", "content": "x"})) == Decision.ALLOW
+
+def test_absolute_path_needs_approval():
+    g = Guardrail(rules())
+    assert g.inspect(Action("write_file", {"path": "/etc/passwd", "content": "x"})) == Decision.NEED_APPROVAL
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
@@ -940,7 +944,6 @@ git commit -m "feat(feedback): pytest/ruff/mypy validators parse structured prod
 ```python
 # tests/test_feedback_loop.py
 from harness.feedback.feedback_loop import FeedbackLoop, StopReason
-from harness.feedback.validators import Product, PytestValidator, RuffValidator, MypyValidator
 from harness.models import Source, Verdict, Failure, FailureKind, Feedback
 from harness.config import ValidatorConfig
 import json
