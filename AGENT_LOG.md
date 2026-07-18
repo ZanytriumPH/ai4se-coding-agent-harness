@@ -87,3 +87,14 @@
 - 终交付物：`README.md`（§5 章节）、`AGENT_LOG.md`（本文件，持续更新）、`REFLECTION.md`（1500–2500 字，学生手写）、全项目终评 code review。
 
 > 本文件随 SDD 进展滚动更新；每 PR 合并后追加该 PR 的终评结论。
+
+---
+
+## 6. PR-2 收尾（机制层）合并记录
+
+- **合并方式**：`finishing-a-development-branch` → Option 1 合并入 main 本地（fast-forward，0f57792..0d76d87，9 commits）。main 上 42/42 测试通过。与 PR-1 同型（origin/main 落后，无远程 PR 目标）。
+- **分支管理**：pinned 工作树复用——在同一 cwd 路径 `git checkout -b pr-3-integration`（从 main 0d76d87），删 pr-2-mechanisms 分支。未重建工作树（PR-2 sdd scratch 保留）。
+- **人工裁决（甲）**：Task 9 `_safe` 兄弟前缀弱点。终评标为唯一阻断项（plan-mandated Important）。人裁决"甲：硬化"——将 `str(target).startswith(str(base))` 改为 `target != base and base not in target.parents` + 兄弟前缀回归测试。与冷启动 `escape_regex` 甲裁决同型（spec §3.3 优于 brief）。fix commit `0d76d87`，re-review 确认阻断项解决、PR-2 READY TO MERGE。
+- **过程缺口补修**：§4.7 PLAN.md 持续更新——回填 11 个已完成 task 的 checkbox + commit hash（commit `5c213eb`）。
+- **延期 Minor（PR-2）**：8 项（缺尾换行、Validator.parse 非抽象、ruff/mypy 下标 KeyError 风险、clear() 吞异常、verdict.name 字符串比较、FeedbackLoop.validators 未用、bare dict、Tool 非抽象）→ 全延后，PR-3 typing-polish 或 PR-5 finalize 一并清。
+- **凭据**：全程 clean，仅 fake 占位（`sk-test`/`sk-secret`），`.gitignore` 排除 `.env`/`*.key`/`secrets.yaml`，`status()` 不回显明文。
