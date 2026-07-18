@@ -104,6 +104,7 @@ demo/
 ---
 
 ### Task 1: 核心数据模型 `models.py`
+> ✅ **COMPLETE** — commit `84ee16f` — PR-1 merged; review clean.
 
 **Files:**
 - Create: `src/harness/models.py`
@@ -112,7 +113,7 @@ demo/
 **Interfaces:**
 - Produces: `Source`, `Verdict`, `FailureKind`(enums), `Action`, `Failure`, `Feedback`, `TurnRecord`, `MemoryEntry`, `RunResult`(dataclasses), `failure_fingerprint(feedback)->frozenset`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_models.py
@@ -136,12 +137,12 @@ def test_pass_feedback_has_empty_fingerprint():
     assert failure_fingerprint(f) == frozenset()
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_models.py -v`
 Expected: FAIL — `ModuleNotFoundError: harness.models`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/models.py
@@ -209,12 +210,12 @@ def failure_fingerprint(feedback: Feedback) -> frozenset:
     )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_models.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/models.py tests/test_models.py
@@ -224,6 +225,7 @@ git commit -m "feat(models): core data models + failure fingerprint"
 ---
 
 ### Task 2: 声明式配置 `config.py`
+> ✅ **COMPLETE** — commit `37d2cdb` — PR-1 merged; review clean.
 
 **Files:**
 - Create: `src/harness/config.py`, `config.yaml`
@@ -233,7 +235,7 @@ git commit -m "feat(models): core data models + failure fingerprint"
 - Consumes: none
 - Produces: `Config`, `GuardrailRules`, `ValidatorConfig`, `Config.load(path)->Config`。`Config` 暴露 `.guardrail`、`.validator`（含 `max_rounds`/`no_progress_window`）、`.llm_provider`、`.memory_path`。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_config.py
@@ -265,12 +267,12 @@ guardrail:
     assert ".env" in cfg.guardrail.deny_paths
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_config.py -v`
 Expected: FAIL — `ModuleNotFoundError: harness.config`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/config.py
@@ -342,12 +344,12 @@ guardrail:
   escape_regex: '(^/)|(\.\.)'
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_config.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/config.py config.yaml tests/test_config.py
@@ -357,6 +359,7 @@ git commit -m "feat(config): declarative yaml config loader + default rules"
 ---
 
 ### Task 3: LLM 抽象层与 Mock `llm/base.py` + `llm/mock.py`
+> ✅ **COMPLETE** — commit `f5fb361` — PR-1 merged; review clean.
 
 **Files:**
 - Create: `src/harness/llm/__init__.py`, `src/harness/llm/base.py`, `src/harness/llm/mock.py`
@@ -365,7 +368,7 @@ git commit -m "feat(config): declarative yaml config loader + default rules"
 **Interfaces:**
 - Produces: `LLMResponse`（dataclass: `tool: str|None, args: dict|None, text: str|None, parse_error: bool`）、`LLMClient`（接口 `complete(messages, tools_schema)->LLMResponse`）、`MockLLMClient`（按脚本回放动作序列）。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_mock_llm.py
@@ -389,12 +392,12 @@ def test_mock_llm_exhausts_script_returns_parse_error():
     assert r.parse_error is True and r.tool is None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_mock_llm.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/llm/base.py
@@ -437,12 +440,12 @@ from .base import LLMClient, LLMResponse
 from .mock import MockLLMClient
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_mock_llm.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/llm/ tests/test_mock_llm.py
@@ -452,6 +455,7 @@ git commit -m "feat(llm): LLMClient protocol + MockLLMClient scripted playback"
 ---
 
 ### Task 3b: 真实 LLM provider client `llm/deepseek.py` + `llm/anthropic_client.py`
+> ✅ **COMPLETE** — commit `0f57792` — PR-1 merged; review clean.
 
 **Files:**
 - Create: `src/harness/llm/deepseek.py`, `src/harness/llm/anthropic_client.py`
@@ -461,7 +465,7 @@ git commit -m "feat(llm): LLMClient protocol + MockLLMClient scripted playback"
 - Consumes: `LLMClient` 协议 + `LLMResponse`（Task 3）
 - Produces: `DeepSeekClient(api_key, http_client=None, model="deepseek-chat")`、`AnthropicClient(api_key, http_client=None, model="claude-sonnet-5")`，均实现 `complete(messages, tools_schema)->LLMResponse`。function-call 解析为 `LLMResponse(tool,args,...)`；解析失败 `parse_error=True`。`httpx.Client` 可注入（`MockTransport`）以离线单测。
 
-- [ ] **Step 1: Write the failing test（httpx MockTransport，无网络）**
+- [x] **Step 1: Write the failing test（httpx MockTransport，无网络）**
 
 ```python
 # tests/test_provider_clients.py
@@ -509,12 +513,12 @@ def test_anthropic_parse_error_on_empty_content():
     assert r.parse_error is True
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `PYTHONPATH=src pytest tests/test_provider_clients.py -v`
 Expected: FAIL — `ModuleNotFoundError: harness.llm.deepseek`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/llm/deepseek.py
@@ -585,12 +589,12 @@ class AnthropicClient:
 
 在 `src/harness/llm/__init__.py` 追加：`from .deepseek import DeepSeekClient` 与 `from .anthropic_client import AnthropicClient`。
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `PYTHONPATH=src pytest tests/test_provider_clients.py -v`
 Expected: PASS（6/6，全程无网络）
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/llm/deepseek.py src/harness/llm/anthropic_client.py src/harness/llm/__init__.py tests/test_provider_clients.py
@@ -602,6 +606,7 @@ git commit -m "feat(llm): DeepSeek + Anthropic provider clients over httpx (mock
 ---
 
 ### Task 4: 治理护栏 `governance/guardrail.py`
+> ✅ **COMPLETE** — commit `4ee7d6b` — PR-2; review clean.
 
 **Files:**
 - Create: `src/harness/governance/__init__.py`, `src/harness/governance/guardrail.py`
@@ -611,7 +616,7 @@ git commit -m "feat(llm): DeepSeek + Anthropic provider clients over httpx (mock
 - Consumes: `Config`/`GuardrailRules`（Task 2）、`Action`（Task 1）
 - Produces: `Decision`(enum `ALLOW`/`DENY`/`NEED_APPROVAL`)、`Guardrail(rules).inspect(action)->Decision`。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_guardrail.py
@@ -662,12 +667,12 @@ def test_absolute_path_needs_approval():
     assert g.inspect(Action("write_file", {"path": "/etc/passwd", "content": "x"})) == Decision.NEED_APPROVAL
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_guardrail.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/governance/guardrail.py
@@ -728,12 +733,12 @@ class Guardrail:
 from .guardrail import Guardrail, Decision
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_guardrail.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/governance/ tests/test_guardrail.py
@@ -743,6 +748,7 @@ git commit -m "feat(governance): Guardrail.inspect with deny/escape/network rule
 ---
 
 ### Task 5: 审批接口与三实现 `governance/approver.py`
+> ✅ **COMPLETE** — commit `29d6bc8` — PR-2; review clean.
 
 **Files:**
 - Create: `src/harness/governance/approver.py`
@@ -752,7 +758,7 @@ git commit -m "feat(governance): Guardrail.inspect with deny/escape/network rule
 - Consumes: `Action`、`Decision`（Task 4）
 - Produces: `Approver`（接口 `approve(action)->bool`）、`CliApprover`、`AutoRejectApprover`、`WebApprover`（占位实现，Task 14 充实）。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_approver.py
@@ -764,12 +770,12 @@ def test_auto_reject_returns_false_without_io():
     assert a.approve(Action("write_file", {"path": "../../etc", "content": "x"})) is False
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_approver.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/governance/approver.py
@@ -804,12 +810,12 @@ class WebApprover:
 
 在 `src/harness/governance/__init__.py` 追加导出：`from .approver import Approver, AutoRejectApprover, CliApprover, WebApprover`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_approver.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/governance/approver.py src/harness/governance/__init__.py tests/test_approver.py
@@ -819,6 +825,7 @@ git commit -m "feat(governance): Approver protocol + AutoReject/Cli/Web impls"
 ---
 
 ### Task 6: 记忆 `memory/memory.py`（自实现）
+> ✅ **COMPLETE** — commit `697604e` — PR-2; review clean.
 
 **Files:**
 - Create: `src/harness/memory/__init__.py`, `src/harness/memory/memory.py`
@@ -828,7 +835,7 @@ git commit -m "feat(governance): Approver protocol + AutoReject/Cli/Web impls"
 - Consumes: `MemoryEntry`（Task 1）
 - Produces: `RecallQuery`、`Memory`（`store(entry)`、`recall(query)->list[MemoryEntry]`），JSON Lines 存储。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_memory.py
@@ -862,12 +869,12 @@ def test_persists_across_instances(tmp_path):
     assert {e.id for e in got} == {"1"}
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_memory.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/memory/memory.py
@@ -914,12 +921,12 @@ class Memory:
 from .memory import Memory, RecallQuery
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_memory.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/memory/ tests/test_memory.py
@@ -929,6 +936,7 @@ git commit -m "feat(memory): JSON Lines store + tag-intersection recall"
 ---
 
 ### Task 7: 校验器套件 `feedback/validators.py`
+> ✅ **COMPLETE** — commit `1699a8e (+fix ce8263c)` — PR-2; review clean after fix round (ModuleNotFoundError->IMPORT_ERROR).
 
 **Files:**
 - Create: `src/harness/feedback/__init__.py`, `src/harness/feedback/validators.py`, `tests/fixtures/pytest_fail.json`, `tests/fixtures/pytest_pass.json`, `tests/fixtures/ruff_fail.json`, `tests/fixtures/mypy_fail.json`
@@ -938,7 +946,7 @@ git commit -m "feat(memory): JSON Lines store + tag-intersection recall"
 - Consumes: `Source`/`Verdict`/`FailureKind`/`Feedback`/`Failure`（Task 1）
 - Produces: `Validator`（接口 `parse(product)->Feedback`）、`PytestValidator`、`RuffValidator`、`MypyValidator`、`Product`(dataclass: `exitcode:int, stdout:str, stderr:str`)。
 
-- [ ] **Step 1: Write fixtures**
+- [x] **Step 1: Write fixtures**
 
 ```json
 // tests/fixtures/pytest_fail.json  (pytest --json-report 简化形态)
@@ -966,7 +974,7 @@ git commit -m "feat(memory): JSON Lines store + tag-intersection recall"
 [{"file": "src/app.py", "line": 8, "type": "error", "message": "Argument 1 has incompatible type \"str\"; expected \"int\""}]
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```python
 # tests/test_validators.py
@@ -1008,12 +1016,12 @@ def test_mypy_validator_classifies_type():
     assert f.kind == FailureKind.TYPE_VIOLATION and f.location == "src/app.py:8"
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `pytest tests/test_validators.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 4: Write minimal implementation**
+- [x] **Step 4: Write minimal implementation**
 
 ```python
 # src/harness/feedback/validators.py
@@ -1074,12 +1082,12 @@ class MypyValidator(Validator):
 from .validators import Validator, PytestValidator, RuffValidator, MypyValidator, Product
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `pytest tests/test_validators.py -v`
 Expected: PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/harness/feedback/ tests/test_validators.py tests/fixtures/
@@ -1089,6 +1097,7 @@ git commit -m "feat(feedback): pytest/ruff/mypy validators parse structured prod
 ---
 
 ### Task 8: 反馈闭环 `feedback/feedback_loop.py`（★ 重点维度）
+> ✅ **COMPLETE** — commit `889312d` — PR-2; review clean — deep dimension, 3 invariants hold.
 
 **Files:**
 - Create: `src/harness/feedback/feedback_loop.py`
@@ -1098,7 +1107,7 @@ git commit -m "feat(feedback): pytest/ruff/mypy validators parse structured prod
 - Consumes: `Validator`/`Product`（Task 7）、`failure_fingerprint`（Task 1）、`ValidatorConfig`（Task 2）
 - Produces: `StopReason`(enum `CONTINUE`/`SUCCESS`/`NO_PROGRESS`/`MAX_ROUNDS`)、`FeedbackLoop`（`update(feedbacks)->(stop_reason, summary_str)`；维护轮次与指纹历史）。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_feedback_loop.py
@@ -1141,12 +1150,12 @@ def test_summary_is_structured_not_raw():
     assert "FEEDBACK" in summary and "assertion_error" in summary and "tests/test_a.py::test_x" in summary
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_feedback_loop.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/feedback/feedback_loop.py
@@ -1200,12 +1209,12 @@ class FeedbackLoop:
 
 在 `src/harness/feedback/__init__.py` 追加：`from .feedback_loop import FeedbackLoop, StopReason`
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_feedback_loop.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/feedback/feedback_loop.py src/harness/feedback/__init__.py tests/test_feedback_loop.py
@@ -1215,6 +1224,7 @@ git commit -m "feat(feedback): FeedbackLoop with success/no_progress/max_rounds 
 ---
 
 ### Task 9: 工具分发 `tools/`
+> ✅ **COMPLETE** — commit `075da87` — PR-2; review clean (_safe hardening pending human ruling).
 
 **Files:**
 - Create: `src/harness/tools/__init__.py`, `src/harness/tools/base.py`, `src/harness/tools/files.py`, `src/harness/tools/shell.py`, `src/harness/tools/runners.py`, `src/harness/tools/dispatcher.py`
@@ -1224,7 +1234,7 @@ git commit -m "feat(feedback): FeedbackLoop with success/no_progress/max_rounds 
 - Consumes: `Action`、`Product`（Task 1/7）
 - Produces: `Tool`（接口 `exec(args)->Product`）、`ReadFileTool`/`WriteFileTool`（路径校验不得逃逸工作目录）、`ExecShellTool`、`RunTestsTool`/`RunLintTool`/`RunTypecheckTool`、`ToolDispatcher`（`exec(action)->Product`，按 `action.tool` 路由）。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_dispatcher.py
@@ -1250,12 +1260,12 @@ def test_exec_shell_runs(tmp_path):
     assert "hi" in p.stdout
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_dispatcher.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/tools/base.py
@@ -1381,12 +1391,12 @@ from .base import Tool, Product
 from .dispatcher import ToolDispatcher
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_dispatcher.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/tools/ tests/test_dispatcher.py
@@ -1554,6 +1564,7 @@ git commit -m "feat(loop): AgentLoop integrates llm/guardrail/dispatcher/feedbac
 ---
 
 ### Task 11: 凭据管理 `credentials.py`
+> ✅ **COMPLETE** — commit `20521b9` — PR-2; review clean, credentials clean.
 
 **Files:**
 - Create: `src/harness/credentials.py`
@@ -1563,7 +1574,7 @@ git commit -m "feat(loop): AgentLoop integrates llm/guardrail/dispatcher/feedbac
 - Consumes: `keyring` 库（真实运行）；测试注入 in-memory fake
 - Produces: `CredentialStore`（`store(key)`/`get()->str|None`/`status()->str`/`update(key)`/`clear()`），服务名常量 `SERVICE_NAME="coding-agent-harness"`。
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # tests/test_credentials.py
@@ -1598,12 +1609,12 @@ def test_clear():
     assert cs.status() == "not configured"
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `pytest tests/test_credentials.py -v`
 Expected: FAIL — `ModuleNotFoundError`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 ```python
 # src/harness/credentials.py
@@ -1656,12 +1667,12 @@ class CredentialStore:
             pass
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `pytest tests/test_credentials.py -v`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/harness/credentials.py tests/test_credentials.py
