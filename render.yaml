@@ -1,0 +1,21 @@
+# render.yaml — Render Blueprint for one-click deploy (§5.9 WebUI 公网部署).
+#
+# 用法（在 Render 网页）：
+#   1. New → Blueprint → 连接你的 GitHub 仓库（须先把本仓库镜像到 GitHub，见 README）
+#   2. Render 识别本 render.yaml，点 Apply → 构建并部署
+#   3. 部署完成后拿到 https://<service-name>.onrender.com 公网 URL，填回 README
+#
+# runtime: docker → Render 读 Dockerfile 构建；web service 自动注入 PORT（默认 10000），
+# Dockerfile CMD 读 ${PORT:-8000}，故 Render 路由到 10000、app 监听 10000。
+# plan: free（空闲 15min 后睡眠；首次请求冷启动 ~30s，§5.9 已知限制）。
+# 不烘焙任何 LLM key（§3.1）：公网部署仅服务前端 + SSE/审批端点；真实驱动跑留本地配 key。
+services:
+  - type: web
+    name: coding-agent-harness
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /pending
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
