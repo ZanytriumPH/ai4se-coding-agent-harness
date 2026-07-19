@@ -1,0 +1,8 @@
+{
+  "summary": {"total": 0, "passed": 0, "failed": 0, "errors": 1, "collected": 0},
+  "collectors": [
+    {"nodeid": "tests/test_x.py", "outcome": "failed",
+     "longrepr": "tests/test_x.py:1: in <module>\n    from foo import bar\nE   ModuleNotFoundError: No module named 'foo'"}
+  ],
+  "tests": []
+}

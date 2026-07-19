@@ -24,6 +24,17 @@ class PytestValidator(Validator):
                         if ctype in ("ImportError", "ModuleNotFoundError") or "Import" in ctype
                         else FailureKind.ASSERTION_ERROR)
                 failures.append(Failure(kind=kind, location=t["nodeid"], message=crash.get("message", "")))
+        # Collection-phase crashes: tests collected fine but a collector failed
+        # (e.g. ImportError in conftest / module). pytest --json-report puts these
+        # in "collectors", not "tests" — without this check an empty "tests" array
+        # would yield a false PASS.
+        for c in data.get("collectors", []):
+            if c.get("outcome") == "failed":
+                longrepr = c.get("longrepr", "") or ""
+                tail = longrepr.splitlines()[-1] if longrepr else ""
+                failures.append(Failure(kind=FailureKind.COLLECTION_ERROR,
+                                        location=c.get("nodeid", ""),
+                                        message=tail))
         verdict = Verdict.PASS if not failures else Verdict.FAIL
         return Feedback(source=Source.TEST, verdict=verdict, failures=failures)
 

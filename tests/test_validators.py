@@ -40,3 +40,11 @@ def test_pytest_validator_classifies_module_not_found_as_import_error():
     fb = v.parse(Product(exitcode=1, stdout=json.dumps(load("pytest_fail.json")), stderr=""))
     kinds = {(f.kind, f.location) for f in fb.failures}
     assert (FailureKind.IMPORT_ERROR, "tests/test_db.py::test_conn") in kinds
+
+def test_pytest_validator_collection_error_not_false_pass():
+    # collection-phase crash (e.g. ImportError in conftest) → empty "tests",
+    # failed "collectors". Must NOT be misreported as PASS.
+    v = PytestValidator()
+    fb = v.parse(Product(exitcode=2, stdout=json.dumps(load("pytest_collection_error.json")), stderr=""))
+    assert fb.verdict == Verdict.FAIL
+    assert any(f.kind == FailureKind.COLLECTION_ERROR for f in fb.failures)
