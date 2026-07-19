@@ -48,3 +48,17 @@ def test_pytest_validator_collection_error_not_false_pass():
     fb = v.parse(Product(exitcode=2, stdout=json.dumps(load("pytest_collection_error.json")), stderr=""))
     assert fb.verdict == Verdict.FAIL
     assert any(f.kind == FailureKind.COLLECTION_ERROR for f in fb.failures)
+
+def test_ruff_validator_survives_malformed_item():
+    # ruff entry missing 'location'/'code' — must not KeyError-crash the loop.
+    v = RuffValidator()
+    fb = v.parse(Product(exitcode=1, stdout=json.dumps([{"filename": "a.py"}]), stderr=""))
+    assert fb.source == Source.LINT  # did not raise
+    assert fb.verdict == Verdict.PASS  # malformed entry skipped, no classified failure
+
+def test_mypy_validator_survives_malformed_item():
+    # mypy error entry missing 'line' — must not KeyError-crash the loop.
+    v = MypyValidator()
+    fb = v.parse(Product(exitcode=1, stdout=json.dumps([{"file": "a.py", "type": "error"}]), stderr=""))
+    assert fb.source == Source.TYPE  # did not raise
+    assert fb.verdict == Verdict.PASS

@@ -48,7 +48,7 @@ class AgentLoop:
             if decision == Decision.NEED_APPROVAL:
                 if not self.approver.approve(action):
                     last_feedback = f"REJECTED by HITL: {action.tool} {action.args}"
-                    self.turns.append(TurnRecord(len(self.turns)+1, action, None, guardrail_decision, None))
+                    self.turns.append(TurnRecord(len(self.turns)+1, action, None, "rejected", None))
                     continue
             product = self.dispatcher.exec(action)
             feedbacks: dict[str, Feedback] = {}
@@ -67,5 +67,5 @@ class AgentLoop:
             last_feedback = summary
             fp = failure_fingerprint(next(iter(feedbacks.values()))) if feedbacks else None
             self.turns.append(TurnRecord(len(self.turns)+1, action, next(iter(feedbacks.values()), None), guardrail_decision, fp))
-        outcome_map = {StopReason.SUCCESS: "success", StopReason.NO_PROGRESS: "no_progress", StopReason.MAX_ROUNDS: "max_rounds", StopReason.CONTINUE: "max_rounds"}
+        outcome_map = {StopReason.SUCCESS: "success", StopReason.NO_PROGRESS: "no_progress", StopReason.MAX_ROUNDS: "max_rounds", StopReason.CONTINUE: "incomplete"}
         return RunResult(outcome=outcome_map[stop], rounds=loop.round, turn_records=self.turns)

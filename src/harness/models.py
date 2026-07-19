@@ -53,7 +53,7 @@ class MemoryEntry:
 
 @dataclass
 class RunResult:
-    outcome: str  # "success" | "no_progress" | "max_rounds"
+    outcome: str  # "success" | "no_progress" | "max_rounds" | "incomplete"
     rounds: int
     turn_records: list[TurnRecord]
 

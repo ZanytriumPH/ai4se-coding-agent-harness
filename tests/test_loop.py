@@ -46,3 +46,35 @@ def test_loop_recovers_from_fail_to_success(tmp_path):
     result = loop.run()
     assert result.outcome == "success"
     assert result.rounds == 2
+
+def test_loop_incomplete_when_llm_gives_no_tool(tmp_path):
+    # LLM returns text-only (no tool) → loop must break and report "incomplete",
+    # not mislabel it "max_rounds" (which means the round budget was exhausted).
+    loop = AgentLoop(
+        llm=MockLLMClient([LLMResponse(tool=None, args=None, text="I give up")]),
+        guardrail=Guardrail(GuardrailRules()),
+        approver=AutoRejectApprover(),
+        dispatcher=StubDispatcher(fail_then_pass=True),
+        validators={"test": PytestValidator()},
+        feedback_cfg=ValidatorConfig(max_rounds=10, no_progress_window=3),
+        memory=Memory(str(tmp_path / "mem.jsonl")),
+    )
+    result = loop.run()
+    assert result.outcome == "incomplete"
+
+def test_loop_records_rejected_audit_for_denied_approval(tmp_path):
+    # write to absolute path → NEED_APPROVAL; AutoRejectApprover → rejected.
+    # The TurnRecord must record the actual outcome "rejected", not "need_approval".
+    script = [LLMResponse(tool="write_file", args={"path": "/etc/passwd", "content": "x"}, text=None)]
+    loop = AgentLoop(
+        llm=MockLLMClient(script),
+        guardrail=Guardrail(GuardrailRules()),
+        approver=AutoRejectApprover(),
+        dispatcher=StubDispatcher(fail_then_pass=True),
+        validators={"test": PytestValidator()},
+        feedback_cfg=ValidatorConfig(max_rounds=10, no_progress_window=3),
+        memory=Memory(str(tmp_path / "mem.jsonl")),
+    )
+    result = loop.run()
+    rejected = [t for t in result.turn_records if t.guardrail_decision == "rejected"]
+    assert len(rejected) == 1

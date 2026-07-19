@@ -41,23 +41,26 @@ class PytestValidator(Validator):
 class RuffValidator(Validator):
     def parse(self, product: Product) -> Feedback:
         items = json.loads(product.stdout or "[]")
-        failures = [
-            Failure(kind=FailureKind.LINT_VIOLATION,
-                    location=f"{it['filename']}:{it['location']['row']}",
-                    message=f"{it['code']}: {it['message']}")
-            for it in items
-        ]
+        failures = []
+        for it in items:
+            loc = it.get("location")
+            if not isinstance(loc, dict) or "row" not in loc \
+                    or "filename" not in it or "code" not in it:
+                continue  # malformed ruff entry — skip, don't KeyError-crash the loop
+            failures.append(Failure(kind=FailureKind.LINT_VIOLATION,
+                    location=f"{it['filename']}:{loc['row']}",
+                    message=f"{it['code']}: {it.get('message', '')}"))
         verdict = Verdict.PASS if not failures else Verdict.FAIL
         return Feedback(source=Source.LINT, verdict=verdict, failures=failures)
 
 class MypyValidator(Validator):
     def parse(self, product: Product) -> Feedback:
         items = json.loads(product.stdout or "[]")
-        failures = [
-            Failure(kind=FailureKind.TYPE_VIOLATION,
-                    location=f"{it['file']}:{it['line']}",
-                    message=it.get("message", ""))
-            for it in items if it.get("type") == "error"
-        ]
+        failures = []
+        for it in items:
+            if it.get("type") == "error" and "file" in it and "line" in it:
+                failures.append(Failure(kind=FailureKind.TYPE_VIOLATION,
+                        location=f"{it['file']}:{it['line']}",
+                        message=it.get("message", "")))
         verdict = Verdict.PASS if not failures else Verdict.FAIL
         return Feedback(source=Source.TYPE, verdict=verdict, failures=failures)

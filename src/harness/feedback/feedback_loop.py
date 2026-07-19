@@ -1,7 +1,7 @@
 # src/harness/feedback/feedback_loop.py
 from __future__ import annotations
 from enum import Enum
-from harness.models import Feedback, failure_fingerprint
+from harness.models import Feedback, Verdict, failure_fingerprint
 from harness.config import ValidatorConfig
 
 
@@ -21,7 +21,7 @@ class FeedbackLoop:
 
     def update(self, feedbacks: dict[str, Feedback]) -> tuple[StopReason, str]:
         self.round += 1
-        all_pass = all(f.verdict.name == "PASS" for f in feedbacks.values()) if feedbacks else True
+        all_pass = all(f.verdict == Verdict.PASS for f in feedbacks.values()) if feedbacks else True
         summary = self._summarize(feedbacks)
         if all_pass:
             return StopReason.SUCCESS, summary
