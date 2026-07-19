@@ -135,7 +135,7 @@
 - ✅ PR-1–PR-6 全部合并入 main，70/70 离线单测 + §A.6 三幕 demo ALL ACTS PASS + 真实 LLM 端到端 success（PR-6 `356bd84`，详见 §9b）。
 - ⏳ `REFLECTION.md`（1500–2500 字，§5.8）：**学生本人撰写**，禁止 AI 代写（§六）。盲点 2「真实 LLM 从未跑过」已由 PR-6 实证闭合，可据此更新反思。
 - ⏳ 线上部署 URL + 可访问 WebUI（§5.9）：`uvicorn webui.server:app` 部署到免费额度平台。
-- ⏳ CI/CD 最后一次 pass（§5.7）：push 到 origin（NJU GitLab）触发 `.gitlab-ci.yml`，确认 `unit-test` + `build-wheel` pass。
+- ✅ CI/CD 最后一次 pass（§5.7）：PR-6 push origin（`d749a27..6794a66`）后 GitLab 流水线通过——`unit-test` + `build-wheel` 均 pass。
 - ✅ 真实 LLM 冒烟（§9.4，可选）：PR-6 已跑通——DeepSeek 12 轮 failures 4→0 success。`pytest -m live` 标记仍可选补为回归守卫。
 
 > 代码侧交付完成；剩余为本人反思与部署动作。
@@ -203,7 +203,7 @@
 
 1. **REFLECTION.md（1500–2500 字，§5.8）**：必须学生本人撰写，禁止 AI 代写（§六学术规范）。建议内容见 `通用要求.md` §5 反思报告节（Superpowers 技能发挥/形式大于实质、TDD 在 AI 协作下的角色、subagent-driven 自主运行边界、task 颗粒度、SPEC/PLAN 质量对实现的影响及"规约不清致 subagent 偏离"案例——本项目实例：Task 7 `ModuleNotFoundError` 归类偏差、冷启动 escape_regex/多余 import 两个 PLAN 缺陷、prompt/context 策略、凭据与分发迫使想清的问题、重做会改什么、对 Superpowers 方法论的批判）。
 2. **线上部署 URL + 可访问 WebUI（§5.9）**：`uvicorn webui.server:app` 部署到 Render/Fly.io/Railway 等免费额度平台；URL 填入 README「部署架构与 CI/CD」节占位处。
-3. **CI/CD 最后一次 pass（§5.7）**：push 到 origin（NJU GitLab）触发 `.gitlab-ci.yml`，确认 `unit-test` + `build-wheel` 均 pass。origin 目前落后（仅初始提交），需 `git push` 后由学生确认。
+3. ✅ **CI/CD 最后一次 pass（§5.7）**：PR-6 已 push origin（`d749a27..6794a66`），GitLab 流水线通过——`unit-test`（70/70 + demo ALL ACTS PASS）+ `build-wheel`（wheel 制品）均 pass。origin 现与本地 main 同步。
 4. **真实 LLM 冒烟（§9.4，可选但推荐）**：✅ 已于 PR-6 跑通（DeepSeek 12 轮 failures 4→0 success，详见 §9b）。`pytest -m live` 标记仍可选补为回归守卫，但真实通路已实证闭合。
 
 ---
