@@ -1,7 +1,18 @@
 from harness.governance.approver import WebApprover
 from harness.models import Action
-from webui.server import WebUISession
+from webui.server import WebUISession, make_app
 import threading
+
+
+def test_module_level_app_exists_for_uvicorn_deploy():
+    # G1: README documents `uvicorn webui.server:app`. For that to work, the
+    # module must expose a module-level `app` (not just make_app(session)).
+    # Without it, uvicorn fails to import the attribute → deploy breaks.
+    import webui.server as mod
+    assert hasattr(mod, "app")
+    assert mod.app is not None
+    # and make_app still returns a fresh app per session (unchanged contract)
+    assert make_app(WebUISession()) is not mod.app
 
 
 def test_web_approver_uses_injected_ask():

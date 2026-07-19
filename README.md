@@ -71,13 +71,20 @@ ANTHROPIC_API_KEY=sk-ant-...
 ### 运行 harness
 
 ```bash
-# Headless mock 演示（无 key，确定性）
-python -m harness.cli --headless --workdir demo/target_repo
+# Headless mock 演示（无 key，确定性）——CLI 指向三幕机制演示
+python -m harness.cli --headless
+python -m demo.run_demo              # 等价：直接跑三幕演示
 
 # 真实 LLM 修复任务（需先 --init-key）
-python -m harness.cli --config config.yaml --workdir <target-repo>
+harness --config config.yaml --workdir <target-repo>
+python -m demo.run_live               # 等价：workdir 默认 demo/target_repo
 
-# WebUI（部署 / 交互态）
+# WebUI（浏览器 HITL，本地或部署）——服务前端 + 驱动 AgentLoop
+harness --run-webui --workdir <target-repo>          # 真实 LLM
+harness --run-webui --mock                           # 免 token 脚本演示（触发 1 次审批）
+python -m demo.run_webui --mock                       # 等价：workdir 默认 demo/target_repo
+
+# 仅服务 WebUI 前端（不驱动循环，部署态/反代用）
 uvicorn webui.server:app --host 0.0.0.0 --port 8000
 ```
 
@@ -102,9 +109,20 @@ python -m build                  # → dist/coding_agent_harness-*.whl
 # 安装分发产物
 pip install dist/coding_agent_harness-*.whl
 
-# （可选）Docker
+# （可选）Docker —— 单条 build + 单条 run 即可启动（§3.2 容器形态）
 docker build -t coding-agent-harness .
+
+# 默认 CMD 服务 WebUI 前端于 :8000（§5.9 可访问接口）
+docker run --rm -p 8000:8000 coding-agent-harness
+
+# 免 token 三幕机制演示（终端）
 docker run --rm -it coding-agent-harness make demo
+
+# 真实 LLM 浏览器 HITL：挂载待修仓库 + 注入 key（env 为明文，进程可见；生产态优先宿主 keyring）
+docker run --rm -p 8000:8000 \
+    -e DEEPSEEK_API_KEY=$DEEPSEEK_API_KEY \
+    -v /path/to/broken-repo:/workdir \
+    coding-agent-harness harness --run-webui --host 0.0.0.0 --workdir /workdir
 ```
 
 CI（`.gitlab-ci.yml`）含 `build-wheel` job，每次合并自动产出 wheel 制品。

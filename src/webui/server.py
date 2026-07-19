@@ -78,3 +78,12 @@ def make_app(session: WebUISession) -> Starlette:
     static = Path(__file__).parent / "static"
     app.mount("/", StaticFiles(directory=str(static), html=True), name="static")
     return app
+
+
+# Module-level app so `uvicorn webui.server:app` works for deploy (G1).
+# This serves the frontend + the /events /pending /approve endpoints against a
+# fresh session. For a full run (frontend + a driving loop), use
+# `harness --run-webui` instead — it serves AND drives an AgentLoop against the
+# same session. This bare-uvicorn form is for serving the frontend behind a
+# reverse proxy or when the loop is driven by a separate process.
+app = make_app(WebUISession())

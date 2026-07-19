@@ -13,8 +13,8 @@ dist/
 .ruff_cache/
 
 # Harness runtime artifacts
-.agent_memory/
-.agent_runs/
+.agent_memory
+.agent_runs
 
 # Credentials — never commit
 .env
