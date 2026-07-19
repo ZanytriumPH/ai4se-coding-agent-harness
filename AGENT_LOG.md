@@ -1,6 +1,6 @@
 # AGENT_LOG.md · Coding Agent Harness (AI4SE 期末项目 A)
 
-> 过程日志：记录开发过程中触发的 Superpowers 技能、子代理提交、人工干预与裁决。对应通用要求 §4.4。
+> 过程日志：记录开发过程中触发的 Superpowers 技能、子代理提交、人工干预与裁决。对应通用要求 §4.9（每条含：时间/task 编号、触发技能、prompt/context 配置、commit hash、人工干预、学到的教训）。
 
 ---
 
@@ -37,6 +37,11 @@
 | PLAN 自评 F1 | 无真实 LLM provider client | 新增 Task 3b（DeepSeek + Anthropic over httpx） | PLAN 增 1 task |
 | PR 收尾 | 5 PR vs 12 PR | 合并为 5 PR | 平衡 §4.6/§4.7 忠实度与编排成本 |
 | PR-1 收尾 | 合并方式 | **合并入 main 本地**（origin/main 落后，无远程 PR 目标） | PR-1 fast-forward 入 main |
+| PR-2 收尾 | `_safe` 兄弟前缀弱点（plan-mandated Important） | **甲：硬化** `base in target.parents` + 回归测试 | 与冷启动 `escape_regex` 甲同型（spec §3.3 优于 brief） |
+| Task 7 fix | `ModuleNotFoundError` 归类 | 扩展 predicate（`"Import" in name`）+ 恢复真实 fixture + 锁定测试 | brief 自相矛盾（fixture 用 ModuleNotFoundError 但谓词不匹配），agent 在 fix round 内识别并修 |
+| Task 14 | WebUI 前端 Open Design 落地（§3.6 强烈推荐非强制） | **甲：点名 + CDN 实引 Material**（SPEC §8 + index.html CDN） | WebUI 仍为内核外薄层，不稀释机制工作量 |
+| Task 16 | CLI 仅 `--init-key`（brief 对 §3.1 不足） | 充实为 §3.1 完备（`--status`/`--update-key`/`--clear-key` + `.env` loader） | spec §3.1 优于 brief，与 `_safe`/`escape_regex` 同型 |
+| Task 17 | 评审方式 | **inline 评审**（非子代理） | 会话上下文触发 32MB 上限，子代理无法返回；15 行 yaml 主代理核对 §5.6/§3.2 |
 
 > 凭据红线（用户逐字保留）：key 绝不硬编码进源码、绝不提交进 Git（含历史）、绝不写入日志/终端 history/明文配置文件；.env 为明文、进程环境可见；view status 不得回显明文；仓库内不得出现任何真实凭据；CI 必须含名为 `unit-test` 的 job，最后一次 CI/CD 执行必须 pass。
 
@@ -56,7 +61,7 @@
 | T3b provider clients | `0f57792` (haiku) | sonnet | Spec✅ Approved；凭据 clean（仅 fake `sk-test`）；6/6 离线 |
 | PR-1 终评 | — | opus | READY TO MERGE；跨 task 类型一致；6 Minor 全延后（cosmetic） |
 
-### PR-2 机制层（分支 pr-2-mechanisms，进行中）
+### PR-2 机制层（已合并入 main，main @ 0d76d87）
 
 | Task | 实现 commit | 评审 | 结果 |
 |---|---|---|---|
@@ -65,8 +70,33 @@
 | T6 memory | `697604e` (haiku) | sonnet | Spec✅ Approved；JSON Lines + tag 交集，无向量库 |
 | T7 validators | `1699a8e`→`ce8263c` (haiku, 含 fix round) | sonnet ×2 | Spec✅ Approved；**Important 修复**：`ModuleNotFoundError` 误归类为 ASSERTION_ERROR → 扩展判定 + 恢复真实 fixture + 锁定测试；re-review 确认解决 |
 | T8 feedback_loop ★ | `889312d` (haiku) | sonnet | Spec✅ Approved；三大不变式（指纹不含 message / 停机优先级 / NO_PROGRESS 窗口）均成立 |
-| T9 tools/dispatcher | `075da87` (haiku) | sonnet | Spec✅ Approved；⚠️`_safe` startswith 弱（plan-mandated，兄弟前缀可绕过）→ 延迟到 PR-2 终评裁决（1 行硬化 `base in target.parents`） |
-| T11 credentials | `20521b9` (haiku) | sonnet（进行中） | 待评 |
+| T9 tools/dispatcher | `075da87`→`0d76d87` (haiku + fix) | sonnet ×2 | Spec✅ Approved；⚠️`_safe` startswith 弱（兄弟前缀可绕过，plan-mandated）→ 人工裁决**甲：硬化** `base in target.parents` + 回归测试 |
+| T11 credentials | `20521b9` (haiku) | sonnet | Spec✅ Approved；CredentialStore(keyring)+FakeKeyring 注入；`status()` 不回显明文 |
+| PR-2 终评 | — | opus | CHANGES NEEDED→READY TO MERGE（_safe 甲裁决后）；8 Minor 全延后 |
+
+### PR-3 集成（已合并入 main，main @ ea31f0e）
+
+| Task | 实现 commit | 评审 | 结果 |
+|---|---|---|---|
+| T10 main loop ★ | `2d6b330` (sonnet) | sonnet | Spec✅ Approved；§A.4-A 自实现循环（无框架寄生）；1 测试 = §A.6 幕②；full 43/43 |
+| T12 mini target repo | `eaf6908` (haiku) | sonnet | Spec✅ Approved；手写（§六 标注）；4 fail/3 lint/3 type，真实可修 |
+| T13 integration | `ea31f0e` (haiku) | sonnet | Spec✅ Approved；真实机制栈 + MockLLM；§A.6 幕② 真实 fixture 变体；full 44/44 |
+| PR-3 终评 | — | opus | READY TO MERGE；内核完整，§A.4-A/B/C 全确认；⚠️ testpaths gap 延后 T16（已修） |
+
+### PR-4 WebUI+演示（已合并入 main，main @ 50d88cc）
+
+| Task | 实现 commit | 评审 | 结果 |
+|---|---|---|---|
+| T14 webui | `6ec8165` (sonnet) | sonnet | Spec✅ Approved；Starlette SSE+approval；§3.6 甲（Material CDN）；§A.4-C 隔离；full 45/45 |
+| T15 demo | `50d88cc` (haiku) | sonnet | Spec✅ Approved；§A.6 三幕 ALL ACTS PASS（mock 离线）；full 45/45 |
+| PR-4 终评 | — | opus | READY TO MERGE；§A.6 项目级满足、§A.4-C WebUI 隔离、§3.6 甲、部署就绪 |
+
+### PR-5 打包+CI（已合并入 main，main @ 63c7a2b）
+
+| Task | 实现 commit | 评审 | 结果 |
+|---|---|---|---|
+| T16 packaging/CLI | `f3ecfe4` (sonnet) | sonnet | Spec✅ Approved；pyproject(testpaths 修 gap)+Makefile+§3.1 充实 CLI；make test→45/45, make demo→ALL ACTS PASS |
+| T17 .gitlab-ci.yml | `d3f0356` (haiku) | **主代理 inline**（⚠️ 见 §9） | clean；§5.6 unit-test job + §3.2 build-wheel；CI 用 `pytest -q` 经 testpaths scope |
 
 ---
 
@@ -79,14 +109,15 @@
 
 ---
 
-## 5. 待办（PR-3..PR-5 + 终交付物）
+## 5. 待办（终交付物，学生侧 / 部署侧）
 
-- PR-3 集成：T10 main loop、T12 mini 目标仓库（手写）、T13 集成测试。
-- PR-4 WebUI+演示：T14 webui、T15 demo。
-- PR-5 打包+CI：T16 packaging/CLI（含 `@pytest.mark.live` 真实冒烟，CI skip）、T17 `.gitlab-ci.yml`（必须含 `unit-test` job）。
-- 终交付物：`README.md`（§5 章节）、`AGENT_LOG.md`（本文件，持续更新）、`REFLECTION.md`（1500–2500 字，学生手写）、全项目终评 code review。
+- ✅ PR-1–PR-5 全部合并入 main（main @ `63c7a2b`），45/45 离线单测 + §A.6 三幕 demo ALL ACTS PASS。
+- ⏳ `REFLECTION.md`（1500–2500 字，§5.8）：**学生本人撰写**，禁止 AI 代写（§六）。
+- ⏳ 线上部署 URL + 可访问 WebUI（§5.9）：`uvicorn webui.server:app` 部署到免费额度平台。
+- ⏳ CI/CD 最后一次 pass（§5.7）：push 到 origin（NJU GitLab）触发 `.gitlab-ci.yml`，确认 `unit-test` + `build-wheel` pass。
+- ⏳ 真实 LLM 冒烟（§9.4，可选）：`--init-key` + 跑一次完整修复 / `pytest -m live`。
 
-> 本文件随 SDD 进展滚动更新；每 PR 合并后追加该 PR 的终评结论。
+> 代码侧交付完成；剩余为本人反思与部署动作。
 
 ---
 
@@ -141,3 +172,15 @@
 2. **线上部署 URL + 可访问 WebUI（§5.9）**：`uvicorn webui.server:app` 部署到 Render/Fly.io/Railway 等免费额度平台；URL 填入 README「部署架构与 CI/CD」节占位处。
 3. **CI/CD 最后一次 pass（§5.7）**：push 到 origin（NJU GitLab）触发 `.gitlab-ci.yml`，确认 `unit-test` + `build-wheel` 均 pass。origin 目前落后（仅初始提交），需 `git push` 后由学生确认。
 4. **真实 LLM 冒烟（§9.4，可选但推荐）**：`--init-key` 录入真实 DeepSeek/Anthropic key，跑一次完整修复任务，确认真实 provider 通路（`pytest -m live`）。
+
+---
+
+## 11. 学到的教训（§4.9）
+
+- **PLAN 质量决定 subagent 成败**：冷启动两轮暴露 3 处 PLAN bug（`escape_regex` 误匹配所有含 `/` 路径、Task 8 多余 import、Task 7 fixture 与谓词自相矛盾）。教训——PLAN 里每段代码都须自检「测试预期与此实现是否自洽」，subagent 忠实转写时这些不一致会被原样放大成红色或误判。
+- **"遇不确定停下询问"是冷启动的关键规则**：第一轮 agent 自行改 bug（越界 + scope 滚到 10 task），不合规；第二轮强制"停下、引用、两解、不写"，两轮对照证明规则措辞决定 agent 行为。教训——提示词里把"必须停下"写死，比依赖 agent 自觉更可靠。
+- **spec 优于 brief 的裁决模式**：`escape_regex`/`_safe`/CLI 三处 brief 偏弱，均以 SPEC 字面要求为准硬化（甲）。教训——当 brief 与 spec 冲突时，裁决依据应是 spec，并在 AGENT_LOG 记录该偏离与理由（过程证据）。
+- **mock-LLM 抽象层是 §A.4-C 的地基**：`LLMClient` 协议 + `MockLLMClient` + `AutoRejectApprover` + `FakeKeyring` 让 45/45 测试全程离线、确定性、无网络/keyring/subprocess。教训——先定抽象接口再写实现，mock 与真实共用契约，机制可测性在第一行代码就锁定。
+- **工作树 cwd 钉住风险**：PR-1 收尾时 `git worktree remove` 因会话 cwd 钉在该路径失败并清空内部文件。教训——harness 钉住的 cwd 不能中途 `worktree remove`；改用"同一 pinned 路径上切换分支"复用工作树，把持久账本（`progress.md`）放主树而非工作树内。
+- **plan-mandated 发现属人工裁决域**：Task 9 `_safe` startswith 是 brief 指定的形式，子代理照抄后评审标为 plan-mandated Important——这类不归子代理修，须人工在 SPEC/PLAN 层裁决。教训——SDD 评审要区分"实现 bug"与"规约 bug"，后者上交人工。
+- **上下文体积是硬约束**：Task 17 评审因子代理触发 32MB 上限无法返回。教训——长 SDD 链中，对体量小的收尾 task，inline 评审是合理回退，但须在 AGENT_LOG 记录偏离以保留过程证据；定期 `/compact` 与及时合并入 main 可缓解。
