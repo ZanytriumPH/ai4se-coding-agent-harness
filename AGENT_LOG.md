@@ -42,6 +42,9 @@
 | Task 14 | WebUI 前端 Open Design 落地（§3.6 强烈推荐非强制） | **甲：点名 + CDN 实引 Material**（SPEC §8 + index.html CDN） | WebUI 仍为内核外薄层，不稀释机制工作量 |
 | Task 16 | CLI 仅 `--init-key`（brief 对 §3.1 不足） | 充实为 §3.1 完备（`--status`/`--update-key`/`--clear-key` + `.env` loader） | spec §3.1 优于 brief，与 `_safe`/`escape_regex` 同型 |
 | Task 17 | 评审方式 | **inline 评审**（非子代理） | 会话上下文触发 32MB 上限，子代理无法返回；15 行 yaml 主代理核对 §5.6/§3.2 |
+| PR-6 | 真实 LLM 端到端跑通（§A.4-C 盲点 2） | 主代理 inline 真实跑调试 + TDD，非 SDD subagent | 真实跑暴露 8 个 mock 不可见 bug，逐个红测试修复；failures 4→0 success |
+| PR-6 | run_tests 用 `python -m pytest` 而非控制台脚本 | **甲：按 pytest 官方推荐** | 控制台脚本不把 workdir 入 sys.path → collection ImportError（假反馈）；与 spec 优于 brief 同型（规范要求优于便利默认） |
+| PR-6 | system_prompt 措辞定行为（盲点 4） | 强化：run_tests 优先 / repo-relative 路径 / 禁 exec_shell 调 path | 冷启动"prompt 措辞定行为"裁决在真实跑复现并固化 |
 
 > 凭据红线（用户逐字保留）：key 绝不硬编码进源码、绝不提交进 Git（含历史）、绝不写入日志/终端 history/明文配置文件；.env 为明文、进程环境可见；view status 不得回显明文；仓库内不得出现任何真实凭据；CI 必须含名为 `unit-test` 的 job，最后一次 CI/CD 执行必须 pass。
 
@@ -98,6 +101,24 @@
 | T16 packaging/CLI | `f3ecfe4` (sonnet) | sonnet | Spec✅ Approved；pyproject(testpaths 修 gap)+Makefile+§3.1 充实 CLI；make test→45/45, make demo→ALL ACTS PASS |
 | T17 .gitlab-ci.yml | `d3f0356` (haiku) | **主代理 inline**（⚠️ 见 §9） | clean；§5.6 unit-test job + §3.2 build-wheel；CI 用 `pytest -q` 经 testpaths scope |
 
+### PR-6 真实 LLM 端到端（已合并入 main，commit `356bd84`，详见 §9b）
+
+非 SDD subagent task；主代理 inline 真实跑调试 + TDD（每 bug 先红测试再修）。真实 LLM（DeepSeek）驱动暴露 8 个 mock 不可见 bug：
+
+| 修复 | 测试 | 现象 → 根因 |
+|---|---|---|
+| loop 硬 turn 上限 | `test_loop_hard_turn_cap_bounds_non_validator_loop` | `max_rounds` 只数校验轮，`read_file` 循环跑 323 轮不封顶 |
+| tool-use 协议合规 | `test_loop_builds_tool_use_protocol_messages` | 不回显 assistant tool_call + 结果用 `user` 角色 → LLM 300x 读同一文件 |
+| `tool_call_id` 捕获 | （含上） | `llm/base.py` + `deepseek.py` 捕获 id |
+| 6 工具 schema | `test_tools_schema` (7) | loop 传 `tools_schema=[]` → 真实 LLM 无工具定义 |
+| `python -m pytest` | `test_run_tests_invokes_python_minus_m_pytest` | 控制台脚本不把 workdir 入 sys.path → 3 collection ImportError，`app.py` 从未加载 |
+| JSON 报告写临时文件 | `test_run_tests_reads_json_from_report_file` | `--json-report-file=-` 写字面文件 `-`，stdout 非 JSON 崩 |
+| validator 容非 JSON | `test_pytest_validator_nonjson_stdout_does_not_crash` | 脏 stdout 崩整个 loop → 降级 FAIL+UNKNOWN |
+| utf-8/replace 解码 | `test_runners_encoding` (3) | 中文 locale GBK 解码 reader 线程崩 |
+| Windows 绝对路径 guardrail | `test_guardrail` windows×2 | `C:\` / UNC 漏过 NEED_APPROVAL（POSIX `^/` 不一致） |
+
+结果：DeepSeek-chat，12 轮，failures 4→1→0，outcome=**success**。70/70 单测 + mock 三幕 demo 全绿。
+
 ---
 
 ## 4. 工作树与分支事件
@@ -111,11 +132,11 @@
 
 ## 5. 待办（终交付物，学生侧 / 部署侧）
 
-- ✅ PR-1–PR-5 全部合并入 main（main @ `63c7a2b`），45/45 离线单测 + §A.6 三幕 demo ALL ACTS PASS。
-- ⏳ `REFLECTION.md`（1500–2500 字，§5.8）：**学生本人撰写**，禁止 AI 代写（§六）。
+- ✅ PR-1–PR-6 全部合并入 main，70/70 离线单测 + §A.6 三幕 demo ALL ACTS PASS + 真实 LLM 端到端 success（PR-6 `356bd84`，详见 §9b）。
+- ⏳ `REFLECTION.md`（1500–2500 字，§5.8）：**学生本人撰写**，禁止 AI 代写（§六）。盲点 2「真实 LLM 从未跑过」已由 PR-6 实证闭合，可据此更新反思。
 - ⏳ 线上部署 URL + 可访问 WebUI（§5.9）：`uvicorn webui.server:app` 部署到免费额度平台。
 - ⏳ CI/CD 最后一次 pass（§5.7）：push 到 origin（NJU GitLab）触发 `.gitlab-ci.yml`，确认 `unit-test` + `build-wheel` pass。
-- ⏳ 真实 LLM 冒烟（§9.4，可选）：`--init-key` + 跑一次完整修复 / `pytest -m live`。
+- ✅ 真实 LLM 冒烟（§9.4，可选）：PR-6 已跑通——DeepSeek 12 轮 failures 4→0 success。`pytest -m live` 标记仍可选补为回归守卫。
 
 > 代码侧交付完成；剩余为本人反思与部署动作。
 
@@ -164,6 +185,18 @@
 
 ---
 
+## 9b. PR-6 收尾（真实 LLM 端到端跑通）合并记录
+
+- **动机**：盲点 2 自承"真实 LLM 从未端到端跑过"——§A.4-C 强项是"移除真实 LLM 仍可单测"（70/70 离线），代价是真实通路从未撞过真实 API/subprocess。本 PR 跑通真实端到端，闭合盲点 2。
+- **方式**：主代理 inline 真实跑调试（非 SDD subagent task）。先用 `demo/smoke_provider.py` 冒烟 provider（鉴权+网络+tool_call 解析），再以 `demo/run_live.py` 驱动 `AgentLoop` + `DeepSeekClient` + `ToolDispatcher(workdir=demo/target_repo)` + HITL。每暴露一个 bug 先写红测试再修（TDD）。
+- **8 个 mock 不可见 bug**（详见 §3 PR-6 表）：①Windows GBK subprocess 解码崩 ②editable 装主检出致"改了不生效" ③`max-rounds` 不封顶跑 323 轮 ④tool-use 协议没建对致 LLM 300x 读同一文件 ⑤`--json-report-file=-` 写字面文件致 stdout 非 JSON 崩 ⑥validator 对非 JSON stdout 崩 ⑦Windows 绝对路径漏过 guardrail ⑧**run_tests 用控制台脚本致假反馈**（`app.py` 从未加载，LLM 改了没效果——最关键）。
+- **关键裁决**：⑧为阻断项。`pytest` 控制台脚本不把 workdir 入 sys.path → 3 collection ImportError；按 pytest 官方推荐改 `python -m pytest`（§2 甲裁决：规范要求优于便利默认）。修后 buggy 报 4 个真实 assertion 失败（带消息），fixed 报 pass/0——反馈闭环终于通。
+- **system_prompt 固化**：盲点 4「prompt 措辞定行为」在真实跑复现——LLM 浪费 turn 在 `find`/`dir`/sys.path 调试。强化 prompt：run_tests 优先、repo-relative 路径、禁 exec_shell 调 path。修后 LLM 12 轮内 failures 4→1→0 收敛。
+- **结果**：DeepSeek-chat，12 turns，`outcome=success`，rounds=3。failures 单调 4→1→0（反馈闭环驱动收敛）。70/70 单测 + mock 三幕 demo 全绿。**§A.4-A 自编码 main loop 驱动真实 LLM、§A.4-C 机制确定 + 真实通路，双重证据**。
+- **合并方式**：合并入 main 本地（fast-forward）。沿用 5-PR 本地策略（第 6 个 PR）。commit `356bd84`（代码）+ 本 docs 提交。
+
+---
+
 ## 10. 终交付剩余项（学生侧 / 部署侧，非代码）
 
 以下为通用要求 §5 清单中**必须由学生本人或部署动作完成**的项，harness 代码已就绪：
@@ -171,7 +204,7 @@
 1. **REFLECTION.md（1500–2500 字，§5.8）**：必须学生本人撰写，禁止 AI 代写（§六学术规范）。建议内容见 `通用要求.md` §5 反思报告节（Superpowers 技能发挥/形式大于实质、TDD 在 AI 协作下的角色、subagent-driven 自主运行边界、task 颗粒度、SPEC/PLAN 质量对实现的影响及"规约不清致 subagent 偏离"案例——本项目实例：Task 7 `ModuleNotFoundError` 归类偏差、冷启动 escape_regex/多余 import 两个 PLAN 缺陷、prompt/context 策略、凭据与分发迫使想清的问题、重做会改什么、对 Superpowers 方法论的批判）。
 2. **线上部署 URL + 可访问 WebUI（§5.9）**：`uvicorn webui.server:app` 部署到 Render/Fly.io/Railway 等免费额度平台；URL 填入 README「部署架构与 CI/CD」节占位处。
 3. **CI/CD 最后一次 pass（§5.7）**：push 到 origin（NJU GitLab）触发 `.gitlab-ci.yml`，确认 `unit-test` + `build-wheel` 均 pass。origin 目前落后（仅初始提交），需 `git push` 后由学生确认。
-4. **真实 LLM 冒烟（§9.4，可选但推荐）**：`--init-key` 录入真实 DeepSeek/Anthropic key，跑一次完整修复任务，确认真实 provider 通路（`pytest -m live`）。
+4. **真实 LLM 冒烟（§9.4，可选但推荐）**：✅ 已于 PR-6 跑通（DeepSeek 12 轮 failures 4→0 success，详见 §9b）。`pytest -m live` 标记仍可选补为回归守卫，但真实通路已实证闭合。
 
 ---
 
@@ -183,4 +216,6 @@
 - **mock-LLM 抽象层是 §A.4-C 的地基**：`LLMClient` 协议 + `MockLLMClient` + `AutoRejectApprover` + `FakeKeyring` 让 45/45 测试全程离线、确定性、无网络/keyring/subprocess。教训——先定抽象接口再写实现，mock 与真实共用契约，机制可测性在第一行代码就锁定。
 - **工作树 cwd 钉住风险**：PR-1 收尾时 `git worktree remove` 因会话 cwd 钉在该路径失败并清空内部文件。教训——harness 钉住的 cwd 不能中途 `worktree remove`；改用"同一 pinned 路径上切换分支"复用工作树，把持久账本（`progress.md`）放主树而非工作树内。
 - **plan-mandated 发现属人工裁决域**：Task 9 `_safe` startswith 是 brief 指定的形式，子代理照抄后评审标为 plan-mandated Important——这类不归子代理修，须人工在 SPEC/PLAN 层裁决。教训——SDD 评审要区分"实现 bug"与"规约 bug"，后者上交人工。
+- **mock 不可见的 bug 只有真实跑暴露**（PR-6）：70/70 离线单测全绿 ≠ 真实通路可用。真实跑一遍暴露 8 个 mock 永不触发的 bug——Windows GBK 解码、tool-use 协议缺失、`python -m pytest` vs 控制台脚本的 sys.path 差异、`--json-report-file=-` 的字面文件行为。教训——§A.4-C「移除真实 LLM 仍可单测」是强项，但**必须**配一次真实端到端冒烟，否则 mock 给出虚假信心。盲点 2 由此闭合。
+- **反馈必须是真反馈**（PR-6 #8）：harness 长期报"3 failures"实为 3 个 collection ImportError——`app.py` 从未加载，LLM 怎么改都不变，看似"LLM 不行"实为 harness 喂假反馈。LLM 反复查 sys.path 是**正确**响应（它看到了 `ModuleNotFoundError`），从源码内部却改不了。教训——当 agent 反复在某一非源码维度打转时，先怀疑反馈本身的真实性，而非 agent 能力。
 - **上下文体积是硬约束**：Task 17 评审因子代理触发 32MB 上限无法返回。教训——长 SDD 链中，对体量小的收尾 task，inline 评审是合理回退，但须在 AGENT_LOG 记录偏离以保留过程证据；定期 `/compact` 与及时合并入 main 可缓解。
