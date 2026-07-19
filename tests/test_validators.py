@@ -21,6 +21,15 @@ def test_pytest_validator_pass():
     fb = v.parse(Product(exitcode=0, stdout=json.dumps(load("pytest_pass.json")), stderr=""))
     assert fb.verdict == Verdict.PASS and fb.failures == []
 
+def test_pytest_validator_nonjson_stdout_does_not_crash():
+    # Real-run exposed: if stdout is pytest's terminal text (e.g. a plugin
+    # version wrote the JSON to a file instead of stdout), the validator must
+    # NOT crash the loop with JSONDecodeError. It must degrade to FAIL + UNKNOWN.
+    v = PytestValidator()
+    fb = v.parse(Product(exitcode=1, stdout="F.FFF.\n=== not json ===", stderr=""))
+    assert fb.verdict == Verdict.FAIL
+    assert any(f.kind == FailureKind.UNKNOWN for f in fb.failures)
+
 def test_ruff_validator_classifies_lint():
     v = RuffValidator()
     fb = v.parse(Product(exitcode=1, stdout=json.dumps(load("ruff_fail.json")), stderr=""))

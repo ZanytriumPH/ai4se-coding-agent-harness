@@ -14,7 +14,18 @@ class Validator:
 
 class PytestValidator(Validator):
     def parse(self, product: Product) -> Feedback:
-        data = json.loads(product.stdout or "{}")
+        raw = product.stdout or ""
+        try:
+            data = json.loads(raw) if raw.strip() else {}
+        except json.JSONDecodeError:
+            # Non-JSON stdout (e.g. a plugin-version regression that writes the
+            # report to a file instead of stdout, or pytest crashing before the
+            # report). A crash here would kill the whole loop; degrade to a
+            # single UNKNOWN failure with verdict=FAIL so the agent is told tests
+            # did not run cleanly, instead of crashing or false-PASSing.
+            return Feedback(source=Source.TEST, verdict=Verdict.FAIL,
+                            failures=[Failure(kind=FailureKind.UNKNOWN, location="",
+                                              message="non-JSON pytest stdout (report missing/unparseable)")])
         failures: list[Failure] = []
         for t in data.get("tests", []):
             if t.get("outcome") in ("failed", "error"):

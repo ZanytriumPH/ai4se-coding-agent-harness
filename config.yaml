@@ -11,4 +11,4 @@ guardrail:
   network_blacklist: [curl, wget, iptables]
   git_block: [push]
   shell_blacklist: ["rm -rf", sudo, "chmod 777", mkfs, DROP, TRUNCATE]
-  escape_regex: '(^/)|(\.\.)'
+  escape_regex: '(^/)|(\.\.)|(^([A-Za-z]:[\\/]))|(^\\\\)'

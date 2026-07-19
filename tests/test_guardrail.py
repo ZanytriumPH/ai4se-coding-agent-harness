@@ -53,3 +53,18 @@ def test_normal_write_allowed():
 def test_absolute_path_needs_approval():
     g = Guardrail(rules())
     assert g.inspect(Action("write_file", {"path": "/etc/passwd", "content": "x"})) == Decision.NEED_APPROVAL
+
+
+def test_windows_drive_absolute_needs_approval():
+    # POSIX ^/ flags absolute paths for approval; Windows drive paths (C:\\…)
+    # must be flagged too — otherwise a real LLM using absolute paths on
+    # Windows bypasses the escape checkpoint entirely (real-run surfaced this).
+    g = Guardrail(rules())
+    d = g.inspect(Action("write_file", {"path": r"C:\Users\x\repo\src\app.py", "content": "x"}))
+    assert d == Decision.NEED_APPROVAL
+
+
+def test_windows_unc_path_needs_approval():
+    g = Guardrail(rules())
+    d = g.inspect(Action("write_file", {"path": r"\\server\share\evil.py", "content": "x"}))
+    assert d == Decision.NEED_APPROVAL

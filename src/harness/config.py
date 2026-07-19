@@ -12,7 +12,7 @@ class GuardrailRules:
     network_blacklist: list[str] = field(default_factory=list)
     git_block: list[str] = field(default_factory=list)
     shell_blacklist: list[str] = field(default_factory=list)
-    escape_regex: str = r"(^/)|(\.\.)"  # 绝对路径(^/) 或 目录穿越(..) → NeedApproval; 不匹配普通子路径 src/app.py
+    escape_regex: str = r"(^/)|(\.\.)|(^([A-Za-z]:[\\/]))|(^\\\\)"  # 绝对路径 POSIX(^/) 或 Windows 盘符(C:\) 或 UNC(\\) 或 目录穿越(..) → NeedApproval; 不匹配普通子路径 src/app.py
 
 @dataclass
 class ValidatorConfig:

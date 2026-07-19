@@ -24,9 +24,12 @@ class DeepSeekClient:
         tcs = msg.get("tool_calls") or []
         if not tcs:
             return LLMResponse(tool=None, args=None, text=msg.get("content"), parse_error=False)
-        fn = tcs[0].get("function", {})
+        tc = tcs[0]
+        fn = tc.get("function", {})
+        tc_id = tc.get("id")
         try:
             args = json.loads(fn.get("arguments", "{}"))
         except (json.JSONDecodeError, TypeError):
             return LLMResponse(tool=None, args=None, text=None, parse_error=True)
-        return LLMResponse(tool=fn.get("name"), args=args, text=None, parse_error=False)
+        return LLMResponse(tool=fn.get("name"), args=args, text=None,
+                           parse_error=False, tool_call_id=tc_id)
