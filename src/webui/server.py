@@ -15,7 +15,7 @@ from starlette.staticfiles import StaticFiles
 class WebUISession:
     def __init__(self):
         self.events: list[str] = []
-        self._ask_q: queue.Queue = queue.Queue()
+        self._pending = None  # action awaiting approval — peek-able, NOT consumed by /pending
         self._ans_q: queue.Queue = queue.Queue()
         self.lock = threading.Lock()
 
@@ -24,11 +24,24 @@ class WebUISession:
             self.events.append(event)
 
     def ask(self, action):
-        self._ask_q.put(action)
-        return self._ans_q.get()
+        # Park the action as the current pending approval (peek-able via
+        # /pending) and block until the browser POSTs /approve. Must NOT use a
+        # consumed get_nowait for /pending — otherwise the browser's 1s poll
+        # removes the action on the first poll and hides the card on the next,
+        # leaving ask() blocked forever with the UI showing nothing.
+        with self.lock:
+            self._pending = action
+        decision = self._ans_q.get()
+        with self.lock:
+            self._pending = None
+        return decision
 
     def answer(self, decision: bool):
         self._ans_q.put(decision)
+
+    def pending_action(self):
+        with self.lock:
+            return self._pending
 
 
 def make_app(session: WebUISession) -> Starlette:
@@ -50,11 +63,11 @@ def make_app(session: WebUISession) -> Starlette:
         return JSONResponse({"ok": True})
 
     async def pending_approval(request):
-        try:
-            action = session._ask_q.get_nowait()
-            return JSONResponse({"pending": True, "action": {"tool": action.tool, "args": action.args}})
-        except queue.Empty:
-            return JSONResponse({"pending": False})
+        action = session.pending_action()  # peek, does NOT consume
+        if action is not None:
+            return JSONResponse({"pending": True,
+                                 "action": {"tool": action.tool, "args": action.args}})
+        return JSONResponse({"pending": False})
 
     routes = [
         Route("/events", sse),
