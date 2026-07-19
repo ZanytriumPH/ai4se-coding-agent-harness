@@ -45,6 +45,8 @@
 | PR-6 | 真实 LLM 端到端跑通（§A.4-C 盲点 2） | 主代理 inline 真实跑调试 + TDD，非 SDD subagent | 真实跑暴露 8 个 mock 不可见 bug，逐个红测试修复；failures 4→0 success |
 | PR-6 | run_tests 用 `python -m pytest` 而非控制台脚本 | **甲：按 pytest 官方推荐** | 控制台脚本不把 workdir 入 sys.path → collection ImportError（假反馈）；与 spec 优于 brief 同型（规范要求优于便利默认） |
 | PR-6 | system_prompt 措辞定行为（盲点 4） | 强化：run_tests 优先 / repo-relative 路径 / 禁 exec_shell 调 path | 冷启动"prompt 措辞定行为"裁决在真实跑复现并固化 |
+| PR-7 | 补 G1（cli 接真实跑 + 模块级 app）/ G2（Dockerfile）是否 spec 变更 | **非 spec 变更**：补齐 SPEC 既定 CLI 入口 + README 对齐；与 `approve_all_writes`（spec §3.5 扩展，已拒）区分 | scope 边界——README overclaim 是债，补入口是还债不是扩面 |
+| PR-7 | demo 脚本与 cli 关系 | **反转**：真实跑逻辑只入 `harness.cli`，demo/run_live+run_webui 转薄包装委托 | 依赖方向正确（demo→harness），两入口不漂移 |
 
 > 凭据红线（用户逐字保留）：key 绝不硬编码进源码、绝不提交进 Git（含历史）、绝不写入日志/终端 history/明文配置文件；.env 为明文、进程环境可见；view status 不得回显明文；仓库内不得出现任何真实凭据；CI 必须含名为 `unit-test` 的 job，最后一次 CI/CD 执行必须 pass。
 
@@ -119,6 +121,21 @@
 
 结果：DeepSeek-chat，12 轮，failures 4→1→0，outcome=**success**。70/70 单测 + mock 三幕 demo 全绿。
 
+### PR-7 CLI 真实跑 + 模块级 app + Dockerfile（已合并入 main，commit `34003a1`，详见 §9c）
+
+非 SDD subagent task；主代理 inline 补 G1+G2（最终合规矩阵暴露的代码侧缺口）+ TDD：
+
+| 修复 | 测试 | 现象 → 根因 |
+|---|---|---|
+| cli.py 接真实跑 | `test_cli_headless_*` | stub `print("not implemented")` → README 第 78 行 `harness --workdir` 不工作 |
+| `--run-webui` 子命令 | （冒烟） | run_webui 逻辑只在 demo 脚本，CLI 无浏览器 HITL 入口 |
+| `_build_loop` 共享布线 | `test_build_loop_wires_*`（deepseek+anthropic） | 终端/真实-webui 各自布线会漂移 → 抽共享点仅 approver/on_turn 不同 |
+| `_build_mock_loop` | `test_build_mock_loop_*` | 免 token webui 演示需复用脚本（绝对路径触发审批） |
+| 模块级 `app` | `test_module_level_app_exists_for_uvicorn_deploy` | `make_app(session)` 非模块级 → `uvicorn webui.server:app` 报无属性 |
+| Dockerfile + .dockerignore | （构建态） | README §分发 写 `docker build` 但无 Dockerfile；.env 需排除免进镜像层（§3.1） |
+
+结果：76/76 单测；WebUI mock 往返冒烟（/pending→/approve→/events 全链路）。README 不再 overclaim。
+
 ---
 
 ## 4. 工作树与分支事件
@@ -132,9 +149,9 @@
 
 ## 5. 待办（终交付物，学生侧 / 部署侧）
 
-- ✅ PR-1–PR-6 全部合并入 main，70/70 离线单测 + §A.6 三幕 demo ALL ACTS PASS + 真实 LLM 端到端 success（PR-6 `356bd84`，详见 §9b）。
+- ✅ PR-1–PR-7 全部合并入 main，76/76 离线单测 + §A.6 三幕 demo ALL ACTS PASS + 真实 LLM 端到端 success（PR-6 `356bd84`，详见 §9b；PR-7 `34003a1` 详见 §9c）。
 - ⏳ `REFLECTION.md`（1500–2500 字，§5.8）：**学生本人撰写**，禁止 AI 代写（§六）。盲点 2「真实 LLM 从未跑过」已由 PR-6 实证闭合，可据此更新反思。
-- ⏳ 线上部署 URL + 可访问 WebUI（§5.9）：`uvicorn webui.server:app` 部署到免费额度平台。
+- ⏳ 线上部署 URL + 可访问 WebUI（§5.9）：PR-7 后代码侧就绪——`harness --run-webui` 与 `uvicorn webui.server:app` 均可起（模块级 `app` 已加，G1）；Dockerfile 已就位（G2）。剩余为学生侧把容器/进程部署到免费额度平台并填 URL。
 - ✅ CI/CD 最后一次 pass（§5.7）：PR-6 push origin（`d749a27..6794a66`）后 GitLab 流水线通过——`unit-test` + `build-wheel` 均 pass。
 - ✅ 真实 LLM 冒烟（§9.4，可选）：PR-6 已跑通——DeepSeek 12 轮 failures 4→0 success。`pytest -m live` 标记仍可选补为回归守卫。
 
@@ -197,12 +214,24 @@
 
 ---
 
+## 9c. PR-7 收尾（CLI 真实跑 + 模块级 app + Dockerfile）合并记录
+
+- **动机**：PR-6 闭合盲点 2 后做最终合规矩阵，发现两处代码侧缺口（非 spec 变更）：**G1** `cli.py` 真实 run 是桩（`print("not implemented")`）、`webui/server.py` 无模块级 `app`——而 README 第 78/81 行已文档化 `harness --workdir` 与 `uvicorn webui.server:app`，二者均不工作（README overclaim）。**G2** 无 `Dockerfile`，但 README §分发 写了 `docker build`/`docker run`。PyPI 已满足 §3.2「任选其一」，故 G2 二选一：补 Dockerfile 或删 README docker 段——选前者（容器是 §3.2 明列形态之一，且支撑 §5.9 部署）。
+- **G1 实现**：`cli.py` 接真实跑——三模式：`harness --workdir <repo>`（终端 HITL，CliApprover）、`harness --run-webui [--mock]`（浏览器 HITL：bg 线程跑 uvicorn + 主线程跑 AgentLoop，WebApprover 经 session.ask 阻塞等审批）、`harness --headless`（keyless 指向三幕 demo）。`SYSTEM_PROMPT` 提到 `harness/prompt.py`（content物，§A.4-C 不计机制），cli 与 demo 共用不漂移。`_build_loop` 为终端+真实-webui 共享布线点（仅 approver/on_turn 不同），`_build_mock_loop` 复用 run_webui 的脚本（绝对路径触发 guardrail → 浏览器审批卡）。`demo/run_live.py` + `demo/run_webui.py` 转为薄包装（委托 `harness.cli.main`，注入 demo 默认 workdir / `--run-webui`）——真实跑逻辑只在一处，两入口不漂移。`server.py` 加模块级 `app = make_app(WebUISession())`，`uvicorn webui.server:app` 可起。
+- **G2 实现**：`Dockerfile`（python:3.11-slim + gcc/make + `pip install -e .[dev,llm]` + EXPOSE 8000），默认 CMD `uvicorn webui.server:app`（§5.9 可达接口）；`make demo` 覆盖为免 token 三幕演示；真实 LLM 跑挂 `-e DEEPSEEK_API_KEY` + `-v broken-repo:/workdir`。`.dockerignore` 排除 `.env`（§3.1：明文 key 绝不进镜像层）。
+- **裁决**：不引入 `approve_all_writes`（spec §3.5 扩展，scope creep，已拒）。G1/G2 是补齐 spec 既定 CLI 入口 + README 对齐，非 spec 变更。
+- **TDD**：红先——`test_cli.py`（4）：`--headless` 返回 0 且指向 demo.run_demo（keyless）；`_build_loop` 正确注入 client/approver/SYSTEM_PROMPT/6-tool schema（deepseek + anthropic 两种格式）；`_build_mock_loop` 用 WebApprover 且绝对路径触发审批。`test_webui.py`（+1）：模块级 `app` 存在且 `make_app` 仍返回新实例。76 pass（71→76）。
+- **真实冒烟**：`harness --run-webui --mock --port 8765` 起服务 → `GET /pending` 见 `{"pending":true,"action":{"tool":"write_file",...}}` → `POST /approve {"approve":true}` → `GET /events` 流式推送 `[turn 1] run_tests verdict=fail failures=1` → `[turn 2] write_file need_approval` → `[turn 3] run_tests verdict=pass failures=0`。CLI 入口 + 模块级 app + HITL 往返 + SSE 全链路打通。
+- **结果**：README 不再 overclaim；§3.2 分发（PyPI + 容器）与 §5.9 WebUI 部署代码侧就绪。**合并方式**：本地 ff-merge 入 main（第 7 个 PR）。commit `34003a1`（代码）+ 本 docs 提交。不 push（与最终 REFLECTION 批量）。
+
+---
+
 ## 10. 终交付剩余项（学生侧 / 部署侧，非代码）
 
 以下为通用要求 §5 清单中**必须由学生本人或部署动作完成**的项，harness 代码已就绪：
 
 1. **REFLECTION.md（1500–2500 字，§5.8）**：必须学生本人撰写，禁止 AI 代写（§六学术规范）。建议内容见 `通用要求.md` §5 反思报告节（Superpowers 技能发挥/形式大于实质、TDD 在 AI 协作下的角色、subagent-driven 自主运行边界、task 颗粒度、SPEC/PLAN 质量对实现的影响及"规约不清致 subagent 偏离"案例——本项目实例：Task 7 `ModuleNotFoundError` 归类偏差、冷启动 escape_regex/多余 import 两个 PLAN 缺陷、prompt/context 策略、凭据与分发迫使想清的问题、重做会改什么、对 Superpowers 方法论的批判）。
-2. **线上部署 URL + 可访问 WebUI（§5.9）**：`uvicorn webui.server:app` 部署到 Render/Fly.io/Railway 等免费额度平台；URL 填入 README「部署架构与 CI/CD」节占位处。
+2. **线上部署 URL + 可访问 WebUI（§5.9）**：代码侧已就绪（PR-7 `34003a1`）——`harness --run-webui --host 0.0.0.0` 服务前端+驱动循环；`uvicorn webui.server:app`（模块级 `app` 已加）；`Dockerfile` 默认 CMD 服务 :8000。部署到 Render/Fly.io/Railway 等免费额度平台后，URL 填入 README「部署架构与 CI/CD」节占位处。
 3. ✅ **CI/CD 最后一次 pass（§5.7）**：PR-6 已 push origin（`d749a27..6794a66`），GitLab 流水线通过——`unit-test`（70/70 + demo ALL ACTS PASS）+ `build-wheel`（wheel 制品）均 pass。origin 现与本地 main 同步。
 4. **真实 LLM 冒烟（§9.4，可选但推荐）**：✅ 已于 PR-6 跑通（DeepSeek 12 轮 failures 4→0 success，详见 §9b）。`pytest -m live` 标记仍可选补为回归守卫，但真实通路已实证闭合。
 
