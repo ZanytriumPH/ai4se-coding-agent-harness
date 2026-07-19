@@ -1,5 +1,6 @@
 # tests/test_config.py
-from harness.config import Config, GuardrailRules
+import re
+from harness.config import Config, GuardrailRules, _DEFAULT_ESCAPE_REGEX
 
 def test_config_loads_guardrail_rules(tmp_path):
     cfg_text = r"""
@@ -25,3 +26,24 @@ guardrail:
     assert "rm -rf" in cfg.guardrail.shell_blacklist
     assert "push" in cfg.guardrail.git_block
     assert ".env" in cfg.guardrail.deny_paths
+
+
+def test_load_omitting_escape_regex_uses_hardened_default(tmp_path):
+    # Regression for the latent PR-6 #7 class of bug: Config.load()'s fallback
+    # for a yaml WITHOUT escape_regex must equal the GuardrailRules dataclass
+    # default (hardened — POSIX abs + .. + Windows drive + UNC). A custom
+    # config.yaml that omits the key would otherwise silently fall back to a
+    # weaker POSIX-only literal and let C:\ / \\ paths bypass the guardrail.
+    # One source of truth: the load() fallback must reference the SAME default
+    # as the dataclass field, not a divergent hardcoded string.
+    p = tmp_path / "config.yaml"
+    p.write_text("llm_provider: deepseek\nmemory_path: m\n", encoding="utf-8")
+    cfg = Config.load(str(p))
+    # fallback must catch Windows drive AND UNC absolute paths
+    assert re.search(cfg.guardrail.escape_regex, "C:\\Users\\x"), \
+        "default escape_regex must catch Windows drive paths"
+    assert re.search(cfg.guardrail.escape_regex, "\\\\server\\share"), \
+        "default escape_regex must catch UNC paths"
+    # no drift: load() fallback == dataclass field default
+    assert cfg.guardrail.escape_regex == _DEFAULT_ESCAPE_REGEX
+    assert GuardrailRules.escape_regex == _DEFAULT_ESCAPE_REGEX

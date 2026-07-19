@@ -242,9 +242,10 @@
 - **PLAN 质量决定 subagent 成败**：冷启动两轮暴露 3 处 PLAN bug（`escape_regex` 误匹配所有含 `/` 路径、Task 8 多余 import、Task 7 fixture 与谓词自相矛盾）。教训——PLAN 里每段代码都须自检「测试预期与此实现是否自洽」，subagent 忠实转写时这些不一致会被原样放大成红色或误判。
 - **"遇不确定停下询问"是冷启动的关键规则**：第一轮 agent 自行改 bug（越界 + scope 滚到 10 task），不合规；第二轮强制"停下、引用、两解、不写"，两轮对照证明规则措辞决定 agent 行为。教训——提示词里把"必须停下"写死，比依赖 agent 自觉更可靠。
 - **spec 优于 brief 的裁决模式**：`escape_regex`/`_safe`/CLI 三处 brief 偏弱，均以 SPEC 字面要求为准硬化（甲）。教训——当 brief 与 spec 冲突时，裁决依据应是 spec，并在 AGENT_LOG 记录该偏离与理由（过程证据）。
-- **mock-LLM 抽象层是 §A.4-C 的地基**：`LLMClient` 协议 + `MockLLMClient` + `AutoRejectApprover` + `FakeKeyring` 让 45/45 测试全程离线、确定性、无网络/keyring/subprocess。教训——先定抽象接口再写实现，mock 与真实共用契约，机制可测性在第一行代码就锁定。
+- **mock-LLM 抽象层是 §A.4-C 的地基**：`LLMClient` 协议 + `MockLLMClient` + `AutoRejectApprover` + `FakeKeyring` 让 77/77 测试全程离线、确定性、无网络/keyring/subprocess。教训——先定抽象接口再写实现，mock 与真实共用契约，机制可测性在第一行代码就锁定。
 - **工作树 cwd 钉住风险**：PR-1 收尾时 `git worktree remove` 因会话 cwd 钉在该路径失败并清空内部文件。教训——harness 钉住的 cwd 不能中途 `worktree remove`；改用"同一 pinned 路径上切换分支"复用工作树，把持久账本（`progress.md`）放主树而非工作树内。
 - **plan-mandated 发现属人工裁决域**：Task 9 `_safe` startswith 是 brief 指定的形式，子代理照抄后评审标为 plan-mandated Important——这类不归子代理修，须人工在 SPEC/PLAN 层裁决。教训——SDD 评审要区分"实现 bug"与"规约 bug"，后者上交人工。
 - **mock 不可见的 bug 只有真实跑暴露**（PR-6）：70/70 离线单测全绿 ≠ 真实通路可用。真实跑一遍暴露 8 个 mock 永不触发的 bug——Windows GBK 解码、tool-use 协议缺失、`python -m pytest` vs 控制台脚本的 sys.path 差异、`--json-report-file=-` 的字面文件行为。教训——§A.4-C「移除真实 LLM 仍可单测」是强项，但**必须**配一次真实端到端冒烟，否则 mock 给出虚假信心。盲点 2 由此闭合。
 - **反馈必须是真反馈**（PR-6 #8）：harness 长期报"3 failures"实为 3 个 collection ImportError——`app.py` 从未加载，LLM 怎么改都不变，看似"LLM 不行"实为 harness 喂假反馈。LLM 反复查 sys.path 是**正确**响应（它看到了 `ModuleNotFoundError`），从源码内部却改不了。教训——当 agent 反复在某一非源码维度打转时，先怀疑反馈本身的真实性，而非 agent 能力。
 - **上下文体积是硬约束**：Task 17 评审因子代理触发 32MB 上限无法返回。教训——长 SDD 链中，对体量小的收尾 task，inline 评审是合理回退，但须在 AGENT_LOG 记录偏离以保留过程证据；定期 `/compact` 与及时合并入 main 可缓解。
+- **默认值不能有两份**（PR-7 收尾复核）：`config.py` 的 `GuardrailRules.escape_regex` dataclass 默认是硬化版（含 Windows 盘符+UNC，PR-6 #7 修），但 `Config.load()` 的 `g.get("escape_regex", ...)` fallback 抄了一份**弱版**（仅 POSIX `^/`+`..`）。config.yaml 碰巧带硬化值所以线上没炸，但任何缺该键的自定义 yaml 会静默退回 guardrail 漏洞。教训——同一默认值出现两处必漂移；dataclass 默认与 loader fallback 必须引用同一常量（单源真相），并配一条「缺键时 fallback == dataclass 默认」的回归测试钉住。

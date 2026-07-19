@@ -4,6 +4,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 import yaml
 
+# Single source of truth for the path-escape guardrail default. Hardened
+# (PR-6 #7): POSIX abs (^/) + traversal (..) + Windows drive (C:\) + UNC (\\).
+# Referenced by BOTH the GuardrailRules dataclass field AND Config.load()'s
+# fallback — a custom config.yaml omitting escape_regex must NOT silently
+# regress to a weaker POSIX-only literal (that would let C:\ / \\ bypass the
+# guardrail). Keeping one constant guarantees the two can't drift.
+_DEFAULT_ESCAPE_REGEX = r"(^/)|(\.\.)|(^([A-Za-z]:[\\/]))|(^\\\\)"
+
 @dataclass
 class GuardrailRules:
     deny_paths: list[str] = field(default_factory=list)
@@ -12,7 +20,7 @@ class GuardrailRules:
     network_blacklist: list[str] = field(default_factory=list)
     git_block: list[str] = field(default_factory=list)
     shell_blacklist: list[str] = field(default_factory=list)
-    escape_regex: str = r"(^/)|(\.\.)|(^([A-Za-z]:[\\/]))|(^\\\\)"  # 绝对路径 POSIX(^/) 或 Windows 盘符(C:\) 或 UNC(\\) 或 目录穿越(..) → NeedApproval; 不匹配普通子路径 src/app.py
+    escape_regex: str = _DEFAULT_ESCAPE_REGEX  # 绝对路径(POSIX ^/ 或 Windows C:\ 或 UNC \\) 或 目录穿越(..) → NeedApproval; 不匹配普通子路径 src/app.py
 
 @dataclass
 class ValidatorConfig:
@@ -45,6 +53,6 @@ class Config:
                 network_blacklist=g.get("network_blacklist", []),
                 git_block=g.get("git_block", []),
                 shell_blacklist=g.get("shell_blacklist", []),
-                escape_regex=g.get("escape_regex", r"(^/)|(\.\.)"),
+                escape_regex=g.get("escape_regex", _DEFAULT_ESCAPE_REGEX),
             ),
         )

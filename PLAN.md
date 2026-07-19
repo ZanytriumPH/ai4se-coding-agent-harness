@@ -83,24 +83,6 @@ demo/
 
 节奏：PR-1 → PR-2 → PR-3 → PR-4 → PR-5 串行（后依赖前）。每个 PR 内部按 task 的红-绿-重构-提交纪律推进；PR 间以两阶段评审（spec 合规 → 代码质量）为闸门，Critical issue 必须修复才进下一 PR。
 
----|---|---|---|---|
-| **PR-0 · 基座** | T1, T2, T3 | models + config + LLM 抽象/Mock | — | 无（先行 merge） |
-| **PR-1 · 治理** | T4, T5 | Guardrail + Approver 三实现 | PR-0 | PR-2/3/4/6 |
-| **PR-2 · 记忆** | T6 | Memory store/recall（自实现） | PR-0 | PR-1/3/4/6 |
-| **PR-3 · 校验与反馈★** | T7, T8 | Validators + FeedbackLoop（重点） | PR-0 | PR-1/2/4/6 |
-| **PR-4 · 工具分发** | T9 | ToolDispatcher + 工具集 | PR-0 | PR-1/2/3/6 |
-| **PR-5 · 凭据** | T11 | CredentialStore + FakeKeyring | PR-0 | PR-1/2/3/4/6 |
-| **PR-6 · 目标仓库** | T12 | 手写 mini target repo | — | 全员（无代码依赖） |
-| **PR-7 · 主循环** | T10 | AgentLoop（集成） | PR-1/2/3/4 | 无（汇合点） |
-| **PR-8 · 集成测试** | T13 | mock-LLM 端到端修复 | PR-7, PR-6 | 无 |
-| **PR-9 · WebUI** | T14 | SSE + 审批 + Open Design 前端 | PR-7 | PR-8/10 |
-| **PR-10 · 机制演示** | T15 | 三幕 demo 脚本 | PR-3, PR-7 | PR-8/9 |
-| **PR-11 · 打包与 CI** | T16, T17 | pyproject + CLI + Makefile + .gitlab-ci.yml | PR-10 | 无 |
-
-并行节奏建议：PR-0 先行 merge → 同时开 PR-1/2/3/4/5/6 六个 worktree → 汇合到 PR-7 → 再 PR-8/9/10 → 最后 PR-11。每个 PR 内部仍严格按 task 的红-绿-重构-提交纪律推进；PR 间以两阶段评审（spec 合规 → 代码质量）为闸门，Critical issue 必须修复才进下一 PR。
-
----
-
 ---
 
 ### Task 1: 核心数据模型 `models.py`
