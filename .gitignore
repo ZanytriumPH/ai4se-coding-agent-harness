@@ -22,6 +22,10 @@ dist/
 *.key
 secrets.yaml
 
+# Claude Code / Superpowers harness artifacts (not deliverables)
+.claude/
+.superpowers/
+
 # OS
 .DS_Store
 Thumbs.db
