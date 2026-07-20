@@ -227,25 +227,43 @@ def _run_webui(args, cfg) -> int:
 
     if args.mock:
         print("harness: --mock mode (token-free): watch the log, approve the "
-              "guarded write_file when the card pops up.")
+              "guarded write_file when the card pops up. Replays forever — the "
+              "process never exits, so the platform never restarts the replica "
+              "(an exit → restart → cold-start 502 'connection dial timeout').")
         import tempfile
-        loop = _build_mock_loop(session, cfg, Path(tempfile.gettempdir()))
-    else:
-        provider = args.provider or cfg.llm_provider
-        print(f"harness: provider={provider} workdir={args.workdir} "
-              f"max_rounds={cfg.validator.max_rounds} (REAL LLM — costs tokens)")
-        client = _build_client(provider, _get_key(provider, args.from_env))
-        loop = _build_loop(client, cfg, args.workdir,
-                           WebApprover(session=session),
-                           lambda t: session.push(_turn_to_event(t)), provider)
+        tmp = Path(tempfile.gettempdir())
+        # Replay the mock loop forever. The loop blocks at the turn-2 approval
+        # until a visitor clicks Approve, so this is NOT a busy loop — it parks
+        # waiting for HITL, completes one 3-act run, then immediately re-runs
+        # (turn 1 → approval card → …). uvicorn (started above) stays up across
+        # replays; the process never exits, so no restart, no 502.
+        while True:
+            loop = _build_mock_loop(session, cfg, tmp)
+            try:
+                result = loop.run()
+            except KeyboardInterrupt:
+                print("\nharness: interrupted by user")
+                return 130
+            summary = (f"=== RUN RESULT === outcome={result.outcome} "
+                       f"rounds={result.rounds} "
+                       f"({len(result.turn_records)} turns; replaying the demo…)")
+            print(summary)
+            session.push(summary)
 
+    # real-LLM run-once path (local operator use; exits after 30s)
+    provider = args.provider or cfg.llm_provider
+    print(f"harness: provider={provider} workdir={args.workdir} "
+          f"max_rounds={cfg.validator.max_rounds} (REAL LLM — costs tokens)")
+    client = _build_client(provider, _get_key(provider, args.from_env))
+    loop = _build_loop(client, cfg, args.workdir,
+                       WebApprover(session=session),
+                       lambda t: session.push(_turn_to_event(t)), provider)
     print("harness: starting agent loop… (Ctrl+C to stop)")
     try:
         result = loop.run()
     except KeyboardInterrupt:
         print("\nharness: interrupted by user")
         return 130
-
     summary = (f"\n=== RUN RESULT ===\noutcome = {result.outcome}   "
                f"rounds = {result.rounds}\n"
                f"({len(result.turn_records)} turns; see browser log)")

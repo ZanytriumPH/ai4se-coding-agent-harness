@@ -80,3 +80,28 @@ def test_build_mock_loop_uses_web_approver_and_triggers_approval(tmp_path):
     session.answer(True)   # approve the guarded write
     t.join(timeout=5)
     assert result.get("r") is not None
+
+
+def test_mock_loop_replays_on_same_session(tmp_path):
+    # The public deploy's --mock mode replays the 3-act demo forever on ONE
+    # session (uvicorn stays up, the loop re-runs instead of exiting — an exit
+    # would make Railway restart the replica and 502 during cold start).
+    # Guard: two consecutive _build_mock_loop runs against the SAME session
+    # both complete success after an approval (the replay contract the
+    # while-loop in _run_webui relies on).
+    cfg = Config.load("config.yaml")
+    session = WebUISession()
+
+    for i in range(2):
+        loop = _build_mock_loop(session, cfg, Path(str(tmp_path)))
+        result = {}
+        t = threading.Thread(target=lambda: result.setdefault("r", loop.run()))
+        t.start()
+        import time
+        time.sleep(0.2)
+        # each replay parks a fresh pending write_file at turn 2
+        pending = session.pending_action()
+        assert pending is not None and pending.tool == "write_file"
+        session.answer(True)
+        t.join(timeout=5)
+        assert result["r"].outcome == "success", f"replay {i} did not succeed"
