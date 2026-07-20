@@ -227,28 +227,33 @@ def _run_webui(args, cfg) -> int:
 
     if args.mock:
         print("harness: --mock mode (token-free): watch the log, approve the "
-              "guarded write_file when the card pops up. Replays forever — the "
-              "process never exits, so the platform never restarts the replica "
-              "(an exit → restart → cold-start 502 'connection dial timeout').")
+              "guarded write_file when the card pops up. Runs once, then stays "
+              "up showing the result — the process never exits, so the platform "
+              "never restarts the replica (an exit → restart → cold-start 502 "
+              "'connection dial timeout'), and it does NOT auto-replay.")
         import tempfile
-        tmp = Path(tempfile.gettempdir())
-        # Replay the mock loop forever. The loop blocks at the turn-2 approval
-        # until a visitor clicks Approve, so this is NOT a busy loop — it parks
-        # waiting for HITL, completes one 3-act run, then immediately re-runs
-        # (turn 1 → approval card → …). uvicorn (started above) stays up across
-        # replays; the process never exits, so no restart, no 502.
-        while True:
-            loop = _build_mock_loop(session, cfg, tmp)
-            try:
-                result = loop.run()
-            except KeyboardInterrupt:
-                print("\nharness: interrupted by user")
-                return 130
-            summary = (f"=== RUN RESULT === outcome={result.outcome} "
-                       f"rounds={result.rounds} "
-                       f"({len(result.turn_records)} turns; replaying the demo…)")
-            print(summary)
-            session.push(summary)
+        loop = _build_mock_loop(session, cfg, Path(tempfile.gettempdir()))
+        try:
+            result = loop.run()
+        except KeyboardInterrupt:
+            print("\nharness: interrupted by user")
+            return 130
+        summary = (f"=== RUN RESULT === outcome={result.outcome} "
+                   f"rounds={result.rounds} "
+                   f"({len(result.turn_records)} turns; server up, result stays)")
+        print(summary)
+        session.push(summary)
+        # Stay up indefinitely showing the completed run. Do NOT exit (an exit →
+        # Railway restart → cold-start 502) and do NOT auto-replay (a visitor
+        # who wants a fresh run reloads after a platform restart). uvicorn
+        # (bg thread) keeps serving; a reload re-streams the existing events.
+        print(f"harness: run done; server up at {url} indefinitely (Ctrl+C to stop).")
+        try:
+            while True:
+                threading.Event().wait(3600)
+        except KeyboardInterrupt:
+            return 130
+        return 0
 
     # real-LLM run-once path (local operator use; exits after 30s)
     provider = args.provider or cfg.llm_provider
