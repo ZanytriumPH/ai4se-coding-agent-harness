@@ -149,9 +149,9 @@
 
 ## 5. 待办（终交付物，学生侧 / 部署侧）
 
-- ✅ PR-1–PR-7 全部合并入 main，76/76 离线单测 + §A.6 三幕 demo ALL ACTS PASS + 真实 LLM 端到端 success（PR-6 `356bd84`，详见 §9b；PR-7 `34003a1` 详见 §9c）。
-- ⏳ `REFLECTION.md`（1500–2500 字，§5.8）：**学生本人撰写**，禁止 AI 代写（§六）。盲点 2「真实 LLM 从未跑过」已由 PR-6 实证闭合，可据此更新反思。
-- ⏳ 线上部署 URL + 可访问 WebUI（§5.9）：PR-7 后代码侧就绪——`harness --run-webui` 与 `uvicorn webui.server:app` 均可起（模块级 `app` 已加，G1）；Dockerfile 已就位（G2）。剩余为学生侧把容器/进程部署到免费额度平台并填 URL。
+- ✅ PR-1–PR-7 全部合并入 main，77/77 离线单测 + §A.6 三幕 demo ALL ACTS PASS + 真实 LLM 端到端 success（PR-6 `356bd84`，详见 §9b；PR-7 `34003a1` 详见 §9c）。
+- ✅ `REFLECTION.md`（§5.8）：学生本人撰写（§六标注 AI 辅助润色）；数字 5→7 PR / 50→77 测试经学生授权校准，观点未改。commit `9307b3a`。
+- ✅ 线上部署 URL + 可访问 WebUI（§5.9）：部署于 **Railway**（连 GitHub 镜像 → 读 Dockerfile 构建），公网 URL `https://coding-agent-harness-production.up.railway.app/`。Dockerfile 默认 CMD 驱动 mock 修复循环（`python -m harness.cli --run-webui --mock`，读 `${PORT:-8000}`），公网实测三幕全跑通（run_tests fail → 审批卡 → run_tests pass → RUN RESULT）。不烘焙 key（§3.1）。镜像前全历史凭据扫描无命中。
 - ✅ CI/CD 最后一次 pass（§5.7）：PR-6 push origin（`d749a27..6794a66`）后 GitLab 流水线通过——`unit-test` + `build-wheel` 均 pass。
 - ✅ 真实 LLM 冒烟（§9.4，可选）：PR-6 已跑通——DeepSeek 12 轮 failures 4→0 success。`pytest -m live` 标记仍可选补为回归守卫。
 
@@ -231,7 +231,7 @@
 以下为通用要求 §5 清单中**必须由学生本人或部署动作完成**的项，harness 代码已就绪：
 
 1. **REFLECTION.md（1500–2500 字，§5.8）**：必须学生本人撰写，禁止 AI 代写（§六学术规范）。建议内容见 `通用要求.md` §5 反思报告节（Superpowers 技能发挥/形式大于实质、TDD 在 AI 协作下的角色、subagent-driven 自主运行边界、task 颗粒度、SPEC/PLAN 质量对实现的影响及"规约不清致 subagent 偏离"案例——本项目实例：Task 7 `ModuleNotFoundError` 归类偏差、冷启动 escape_regex/多余 import 两个 PLAN 缺陷、prompt/context 策略、凭据与分发迫使想清的问题、重做会改什么、对 Superpowers 方法论的批判）。
-2. **线上部署 URL + 可访问 WebUI（§5.9）**：代码侧已就绪（PR-7 `34003a1`）——`harness --run-webui --host 0.0.0.0` 服务前端+驱动循环；`uvicorn webui.server:app`（模块级 `app` 已加）；`Dockerfile` 默认 CMD 服务 :8000。部署到 Render/Fly.io/Railway 等免费额度平台后，URL 填入 README「部署架构与 CI/CD」节占位处。
+2. ✅ **线上部署 URL + 可访问 WebUI（§5.9）**：已部署于 **Railway**——连 GitHub 镜像仓库 → 读 `Dockerfile` 构建 → web service 注入 `PORT`。公网 URL `https://coding-agent-harness-production.up.railway.app/`（已填入 README）。Dockerfile 默认 CMD 驱动 mock 修复循环（`python -m harness.cli --run-webui --mock`，读 `${PORT:-8000}`），公网实测三幕跑通（审批卡可点 Approve）。不烘焙 LLM key（§3.1）；真实带 key 驱动跑留本地。`render.yaml` 已清理（未用 Render，留 Dockerfile 通用）。
 3. ✅ **CI/CD 最后一次 pass（§5.7）**：PR-6 已 push origin（`d749a27..6794a66`），GitLab 流水线通过——`unit-test`（70/70 + demo ALL ACTS PASS）+ `build-wheel`（wheel 制品）均 pass。origin 现与本地 main 同步。
 4. **真实 LLM 冒烟（§9.4，可选但推荐）**：✅ 已于 PR-6 跑通（DeepSeek 12 轮 failures 4→0 success，详见 §9b）。`pytest -m live` 标记仍可选补为回归守卫，但真实通路已实证闭合。
 
