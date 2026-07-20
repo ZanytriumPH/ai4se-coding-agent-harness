@@ -33,8 +33,11 @@ ENV HARNESS_WORKDIR=/workdir
 
 EXPOSE 8000
 
-# Default: serve the WebUI frontend (stays up; a reachable interface).
-# PORT-aware: cloud platforms (Render/Fly/Railway) inject PORT for web services
-# (Render default 10000); fall back to 8000 for local `docker run`.
-# Override for the token-free demo or a real-LLM driven run, see header comment.
-CMD ["sh", "-c", "uvicorn webui.server:app --host 0.0.0.0 --port ${PORT:-8000}"]
+# Default: drive the token-free mock repair loop AND serve the WebUI, so a public
+# URL shows live feedback + a clickable approval card (not an empty shell). The
+# mock loop: run_tests(fail) -> write_file(abs path => NEED_APPROVAL, blocks until
+# a visitor clicks Approve in the browser) -> run_tests(pass) -> exits after 30s
+# -> the platform restarts it, replaying the demo. No LLM key baked (§3.1).
+# For a stable frontend-only shell (no driving loop), override CMD:
+#   uvicorn webui.server:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD ["sh", "-c", "python -m harness.cli --run-webui --mock --host 0.0.0.0 --port ${PORT:-8000}"]
